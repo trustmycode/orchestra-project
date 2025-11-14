@@ -1,0 +1,2269 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Orchestra API",
+    "version": "1.2.0",
+    "description": "API Orchestra с поддержкой ACTION/ASSERTION шагов и каналов DB/Kafka/Queue."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Local dev"
+    }
+  ],
+  "paths": {
+    "/processes": {
+      "get": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "Список импортированных процессов",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProcessModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processes/{processId}": {
+      "get": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "Детали процесса",
+        "parameters": [
+          {
+            "name": "processId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/processes/{processId}/steps": {
+      "get": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "Шаги процесса",
+        "parameters": [
+          {
+            "name": "processId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProcessStepDescriptor"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/processes/import/bpmn": {
+      "post": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "Импорт BPMN процесса",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан процесс",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/processes/import/sequence": {
+      "post": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "Импорт sequence-диаграммы",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан процесс",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/specs": {
+      "get": {
+        "tags": [
+          "Specs"
+        ],
+        "summary": "Список импортированных спецификаций",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProtocolSpecSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/specs/{specId}": {
+      "get": {
+        "tags": [
+          "Specs"
+        ],
+        "summary": "Детали спецификации",
+        "parameters": [
+          {
+            "name": "specId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolSpecDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/specs/import": {
+      "post": {
+        "tags": [
+          "Specs"
+        ],
+        "summary": "Импорт протокольной спецификации (OpenAPI и др.)",
+        "parameters": [
+          {
+            "name": "protocolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceName",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создана спецификация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolSpecDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/scenarios": {
+      "get": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Список сценариев",
+        "parameters": [
+          {
+            "name": "processId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestScenarioSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Создать сценарий вручную",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestScenarioDetail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан сценарий",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestScenarioDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/scenarios/from-process": {
+      "post": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Генерация сценария из процесса",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioFromProcessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан сценарий",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestScenarioDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/scenarios/{scenarioId}": {
+      "get": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Детали сценария",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestScenarioDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/scenarios/{scenarioId}/steps/{stepId}": {
+      "patch": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Обновление шага сценария",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioStepUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлён шаг",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioStep"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/scenario-suites": {
+      "get": {
+        "tags": [
+          "ScenarioSuites"
+        ],
+        "summary": "Список ScenarioSuite",
+        "parameters": [
+          {
+            "name": "processId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "processVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioSuiteSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ScenarioSuites"
+        ],
+        "summary": "Создать ScenarioSuite вручную",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioSuiteCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан ScenarioSuite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSuiteDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/scenario-suites/from-process": {
+      "post": {
+        "tags": [
+          "ScenarioSuites"
+        ],
+        "summary": "Генерация ScenarioSuite из процесса",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioSuiteGenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан ScenarioSuite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSuiteDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/scenario-suites/{suiteId}": {
+      "get": {
+        "tags": [
+          "ScenarioSuites"
+        ],
+        "summary": "Детали ScenarioSuite",
+        "parameters": [
+          {
+            "name": "suiteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSuiteDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/test-data-sets": {
+      "get": {
+        "tags": [
+          "TestDataSets"
+        ],
+        "summary": "Список наборов тестовых данных",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GLOBAL",
+                "SUITE",
+                "SCENARIO"
+              ]
+            }
+          },
+          {
+            "name": "suiteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestDataSetSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TestDataSets"
+        ],
+        "summary": "Создать набор тестовых данных",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestDataSetCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан набор данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestDataSetDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/test-data-sets/{dataSetId}": {
+      "get": {
+        "tags": [
+          "TestDataSets"
+        ],
+        "summary": "Детали набора тестовых данных",
+        "parameters": [
+          {
+            "name": "dataSetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestDataSetDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/testruns": {
+      "get": {
+        "tags": [
+          "TestRuns"
+        ],
+        "summary": "Список прогонов",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "suiteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "QUEUED",
+                "IN_PROGRESS",
+                "PASSED",
+                "FAILED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RUN_ALL_STEPS",
+                "STOP_ON_FIRST_FAILURE",
+                "SINGLE_STEP",
+                "FROM_STEP"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestRunSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TestRuns"
+        ],
+        "summary": "Запуск прогона сценария",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestRunCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создан прогон",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestRunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/testruns/{testRunId}": {
+      "get": {
+        "tags": [
+          "TestRuns"
+        ],
+        "summary": "Детали прогона",
+        "parameters": [
+          {
+            "name": "testRunId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestRunDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports/{testRunId}": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Отчёт по прогону",
+        "parameters": [
+          {
+            "name": "testRunId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestRunReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/ai/data/generate": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Генерация тестовых данных для шага",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiGenerateDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiGenerateDataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/ai/specs/analyze": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Анализ покрытия спецификаций сценариями",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAnalyzeSpecsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAnalyzeSpecsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ScenarioStep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderIndex": {
+            "type": "integer"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Тип шага: ACTION или ASSERTION",
+            "enum": [
+              "ACTION",
+              "ASSERTION"
+            ]
+          },
+          "channelType": {
+            "type": "string",
+            "description": "Канал взаимодействия шага",
+            "enum": [
+              "HTTP_REST",
+              "KAFKA",
+              "GRPC",
+              "DB",
+              "QUEUE"
+            ]
+          },
+          "endpointRef": {
+            "$ref": "#/components/schemas/EndpointRef"
+          },
+          "action": {
+            "type": "object",
+            "properties": {
+              "inputTemplate": {
+                "type": "object"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "SYNC",
+                  "FIRE_AND_FORGET"
+                ],
+                "default": "SYNC",
+                "description": "Режим ACTION-шагов"
+              },
+              "meta": {
+                "description": "Мета-информация для шага (HTTP/DB/Kafka/Queue).",
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/HttpActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DbActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KafkaActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/QueueActionMeta"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          },
+          "expectations": {
+            "$ref": "#/components/schemas/StepExpectations"
+          }
+        },
+        "required": [
+          "alias",
+          "channelType",
+          "id",
+          "kind",
+          "name"
+        ]
+      },
+      "HttpActionMeta": {
+        "type": "object",
+        "description": "Мета-информация для HTTP-шагов.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "HTTP"
+            ]
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "DbActionMeta": {
+        "type": "object",
+        "description": "Мета-информация для шагов проверки БД.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "DB"
+            ]
+          },
+          "dataSource": {
+            "type": "string"
+          },
+          "sql": {
+            "type": "string"
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pollIntervalMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "dataSource",
+          "sql"
+        ],
+        "additionalProperties": true
+      },
+      "KafkaActionMeta": {
+        "type": "object",
+        "description": "Мета-информация для шагов проверки Kafka.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "KAFKA_ASSERT"
+            ]
+          },
+          "clusterAlias": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "keyExpression": {
+            "type": "string"
+          },
+          "valueMatcherMode": {
+            "type": "string",
+            "enum": [
+              "EXISTS_ONLY",
+              "PARTIAL_MATCH"
+            ]
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pollIntervalMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "clusterAlias",
+          "topic"
+        ],
+        "additionalProperties": true
+      },
+      "QueueActionMeta": {
+        "type": "object",
+        "description": "Мета-информация для шагов проверки очередей.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "QUEUE_ASSERT"
+            ]
+          },
+          "brokerAlias": {
+            "type": "string"
+          },
+          "queueName": {
+            "type": "string"
+          },
+          "correlationIdExpr": {
+            "type": "string"
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pollIntervalMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "brokerAlias",
+          "queueName"
+        ],
+        "additionalProperties": true
+      },
+      "ProcessModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "BPMN",
+              "SEQUENCE"
+            ]
+          },
+          "sourceUri": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sourceType",
+          "createdAt"
+        ]
+      },
+      "ProcessStepDescriptor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderIndex": {
+            "type": "integer"
+          },
+          "logicalName": {
+            "type": "string"
+          },
+          "lane": {
+            "type": "string"
+          },
+          "actionHint": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "processId",
+          "orderIndex",
+          "logicalName"
+        ]
+      },
+      "ProcessImportResponse": {
+        "type": "object",
+        "properties": {
+          "process": {
+            "$ref": "#/components/schemas/ProcessModel"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessStepDescriptor"
+            }
+          }
+        },
+        "required": [
+          "process"
+        ]
+      },
+      "ProtocolSpecSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "protocolId": {
+            "type": "string"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "protocolId",
+          "serviceName"
+        ]
+      },
+      "ProtocolSpecDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProtocolSpecSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "endpointName": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "endpointName"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EndpointRef": {
+        "type": "object",
+        "properties": {
+          "protocolId": {
+            "type": "string"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "endpointName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocolId",
+          "serviceName",
+          "endpointName"
+        ]
+      },
+      "StepExpectations": {
+        "type": "object",
+        "properties": {
+          "expectedStatusCode": {
+            "type": "integer"
+          },
+          "businessRules": {
+            "type": "object"
+          },
+          "schemaRefs": {
+            "type": "object"
+          }
+        }
+      },
+      "TestScenarioSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Идентификатор ScenarioSuite, к которому привязан сценарий"
+          },
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string",
+            "description": "Бизнес-ключ сценария, например loan-approval:happy-path:vip"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Версия сценария"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "DEPRECATED"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "TestScenarioDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "DEPRECATED"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendedDataSetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScenarioStep"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ScenarioSuiteSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "processId"
+        ]
+      },
+      "ScenarioSuiteDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ScenarioSuiteSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "scenarios": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TestScenarioSummary"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ScenarioSuiteCreateRequest": {
+        "type": "object",
+        "properties": {
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "processId",
+          "name"
+        ]
+      },
+      "ScenarioSuiteGenerateRequest": {
+        "type": "object",
+        "properties": {
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "generationMode": {
+            "type": "string",
+            "enum": [
+              "ALL_PATHS",
+              "HAPPY_PATH_ONLY",
+              "CUSTOM_SELECTION"
+            ],
+            "default": "ALL_PATHS"
+          },
+          "maxScenarios": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Жёсткий предел на количество сгенерированных сценариев"
+          },
+          "maxLoopIterations": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Ограничение на количество итераций циклов при генерации"
+          },
+          "includeParallelCombinations": {
+            "type": "boolean",
+            "default": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "processId",
+          "name"
+        ]
+      },
+      "TestDataSetSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "GLOBAL",
+              "SUITE",
+              "SCENARIO"
+            ]
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "AI_GENERATED",
+              "IMPORTED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "name",
+          "origin"
+        ]
+      },
+      "TestDataSetDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TestDataSetSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "object",
+                "description": "JSON-данные для подстановки в шаги"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "data"
+            ]
+          }
+        ]
+      },
+      "TestDataSetCreateRequest": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "GLOBAL",
+              "SUITE",
+              "SCENARIO"
+            ]
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "AI_GENERATED",
+              "IMPORTED"
+            ],
+            "default": "MANUAL"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "name",
+          "data"
+        ]
+      },
+      "ScenarioFromProcessRequest": {
+        "type": "object",
+        "properties": {
+          "processId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processVersion": {
+            "type": "integer",
+            "description": "Явно выбранная версия процесса; если не указано — используется последняя опубликованная"
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Если указан, сгенерированный сценарий сохраняется внутри данного Suite"
+          },
+          "name": {
+            "type": "string"
+          },
+          "specBindings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid",
+              "description": "specId для данного protocol/service"
+            },
+            "description": "Карта привязок протокола/сервиса к спецификации. Ключ вида 'http:order-service'."
+          }
+        },
+        "required": [
+          "processId"
+        ]
+      },
+      "ScenarioStepUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ACTION",
+              "ASSERTION"
+            ]
+          },
+          "channelType": {
+            "type": "string",
+            "enum": [
+              "HTTP_REST",
+              "KAFKA",
+              "GRPC",
+              "DB",
+              "QUEUE"
+            ]
+          },
+          "endpointRef": {
+            "$ref": "#/components/schemas/EndpointRef"
+          },
+          "action": {
+            "type": "object",
+            "properties": {
+              "inputTemplate": {
+                "type": "object"
+              },
+              "meta": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/HttpActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DbActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KafkaActionMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/QueueActionMeta"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          },
+          "expectations": {
+            "$ref": "#/components/schemas/StepExpectations"
+          }
+        }
+      },
+      "Violation": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Тип нарушения",
+            "enum": [
+              "HTTP_ERROR",
+              "CONTRACT_VIOLATION",
+              "BUSINESS_RULE_VIOLATION",
+              "TIMEOUT",
+              "VALIDATION_ERROR",
+              "DB_ASSERTION_FAILED",
+              "KAFKA_MESSAGE_NOT_FOUND",
+              "QUEUE_MESSAGE_NOT_FOUND"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "StepResult": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepAlias": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "RUNNING",
+              "PASSED",
+              "FAILED",
+              "SKIPPED",
+              "FLAKY"
+            ]
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actualStatusCode": {
+            "type": "integer"
+          },
+          "responseBody": {
+            "type": "object"
+          },
+          "responseHeaders": {
+            "type": "object"
+          },
+          "dbResult": {
+            "type": "object"
+          },
+          "kafkaMessage": {
+            "type": "object"
+          },
+          "queueMessage": {
+            "type": "object"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Violation"
+            }
+          }
+        },
+        "required": [
+          "stepAlias",
+          "status"
+        ]
+      },
+      "TestRunSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioVersion": {
+            "type": "integer"
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dataSetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "QUEUED",
+              "IN_PROGRESS",
+              "PASSED",
+              "FAILED",
+              "CANCELLED"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "RUN_ALL_STEPS",
+              "STOP_ON_FIRST_FAILURE",
+              "SINGLE_STEP",
+              "FROM_STEP"
+            ],
+            "default": "RUN_ALL_STEPS"
+          },
+          "startStepIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "targetStepAlias": {
+            "type": "string"
+          },
+          "baseRunId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ссылка на прогон, из которого переиспользуется ExecutionContext"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "triggeredBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scenarioId",
+          "status"
+        ]
+      },
+      "TestRunDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TestRunSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "dataSet": {
+                "$ref": "#/components/schemas/TestDataSetSummary"
+              },
+              "stepResults": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StepResult"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "TestRunCreateRequest": {
+        "type": "object",
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioVersion": {
+            "type": "integer",
+            "description": "Явная версия сценария; если не указана, используется опубликованная"
+          },
+          "environmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dataSetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dataSetTag": {
+            "type": "string",
+            "description": "Позволяет подобрать набор данных по тегу"
+          },
+          "baseRunId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Прогон, из которого нужно переиспользовать ExecutionContext"
+          },
+          "startStepIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Используется для режима FROM_STEP"
+          },
+          "targetStepAlias": {
+            "type": "string",
+            "description": "Используется для режима SINGLE_STEP"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "RUN_ALL_STEPS",
+              "STOP_ON_FIRST_FAILURE",
+              "SINGLE_STEP",
+              "FROM_STEP"
+            ],
+            "default": "RUN_ALL_STEPS"
+          }
+        },
+        "required": [
+          "scenarioId"
+        ]
+      },
+      "ReportSummary": {
+        "type": "object",
+        "properties": {
+          "testRun": {
+            "$ref": "#/components/schemas/TestRunSummary"
+          },
+          "totalSteps": {
+            "type": "integer"
+          },
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "testRun"
+        ]
+      },
+      "ReportRecommendations": {
+        "type": "object",
+        "properties": {
+          "scenarioImprovements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dataImprovements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "specImprovements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TestRunReport": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ReportSummary"
+          },
+          "stepResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepResult"
+            }
+          },
+          "errorsSummary": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "recommendations": {
+            "$ref": "#/components/schemas/ReportRecommendations"
+          }
+        },
+        "required": [
+          "summary",
+          "stepResults"
+        ]
+      },
+      "AiGenerateDataRequest": {
+        "type": "object",
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "HAPPY_PATH",
+              "NEGATIVE",
+              "BOUNDARY"
+            ],
+            "default": "HAPPY_PATH"
+          }
+        },
+        "required": [
+          "scenarioId",
+          "stepId"
+        ]
+      },
+      "AiGenerateDataResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "AiAnalyzeSpecsRequest": {
+        "type": "object",
+        "properties": {
+          "specIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "specIds"
+        ]
+      },
+      "AiAnalyzeSpecsResponse": {
+        "type": "object",
+        "properties": {
+          "specImprovements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
