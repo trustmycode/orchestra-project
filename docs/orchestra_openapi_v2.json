@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Orchestra API",
-    "version": "1.2.0",
-    "description": "API Orchestra с поддержкой ACTION/ASSERTION шагов и каналов DB/Kafka/Queue."
+    "version": "1.3.0",
+    "description": "API Orchestra с поддержкой SuiteRun, Planner+Resolver и Durable Execution Engine."
   },
   "servers": [
     {
@@ -31,6 +31,51 @@
                 }
               }
             }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Обновить сценарий",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestScenarioDetail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Сценарий обновлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestScenarioDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
           }
         }
       }
@@ -764,6 +809,91 @@
         }
       }
     },
+    "/suite-runs": {
+      "post": {
+        "tags": [
+          "SuiteRuns"
+        ],
+        "summary": "Запуск прогона набора сценариев (SuiteRun)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuiteRunCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Прогон набора принят в обработку",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuiteRunSummary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "SuiteRuns"
+        ],
+        "summary": "Список прогонов наборов сценариев",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuiteRunSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suite-runs/{suiteRunId}": {
+      "get": {
+        "tags": [
+          "SuiteRuns"
+        ],
+        "summary": "Детали прогона набора сценариев",
+        "parameters": [
+          {
+            "name": "suiteRunId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuiteRunDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/testruns": {
       "get": {
         "tags": [
@@ -852,8 +982,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Создан прогон",
+          "202": {
+            "description": "Прогон принят в обработку (статус PENDING/QUEUED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -936,12 +1066,35 @@
         }
       }
     },
+    "/ai/data/generate-simple": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Генерация простого набора тестовых данных (mock)",
+        "description": "Упрощенный эндпоинт для ранних версий UI. Делегирует вызов в текущую реализацию ai-service без бизнес-контекста и не требует тела запроса.",
+        "deprecated": true,
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/data/generate": {
       "post": {
         "tags": [
           "AI"
         ],
         "summary": "Генерация тестовых данных для шага",
+        "description": "Этот эндпоинт принимает бизнес-контекст (scenarioId, stepAlias, режим генерации) и делегирует генерацию данных в ai-service, который использует локальную LLM через Ollama и Spring AI для структурированного JSON-ответа.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1023,10 +1176,11 @@
           },
           "kind": {
             "type": "string",
-            "description": "Тип шага: ACTION или ASSERTION",
+            "description": "Тип шага: ACTION, ASSERTION или BARRIER",
             "enum": [
               "ACTION",
-              "ASSERTION"
+              "ASSERTION",
+              "BARRIER"
             ]
           },
           "channelType": {
@@ -1059,7 +1213,17 @@
                 "description": "Режим ACTION-шагов"
               },
               "meta": {
-                "description": "Мета-информация для шага (HTTP/DB/Kafka/Queue).",
+                "description": "Мета-информация для шага (HTTP/DB/Kafka/Queue) и инструкции экспорта данных.",
+                "type": "object",
+                "properties": {
+                  "exportAs": {
+                    "type": "object",
+                    "description": "Карта переменных SuiteRun.context: ключ — имя переменной, значение — JSONPath к данным ответа шага.",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
                 "oneOf": [
                   {
                     "$ref": "#/components/schemas/HttpActionMeta"
@@ -1076,7 +1240,8 @@
                   {
                     "type": "object"
                   }
-                ]
+                ],
+                "additionalProperties": true
               }
             }
           },
@@ -1455,7 +1620,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "key"
         ]
       },
       "TestScenarioDetail": {
@@ -1515,6 +1681,32 @@
               "$ref": "#/components/schemas/ScenarioStep"
             }
           },
+          "dependsOn": {
+            "type": "array",
+            "description": "Зависимости от других сценариев в SuiteRun.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scenarioKey": {
+                  "type": "string"
+                },
+                "onStatus": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "PASSED",
+                      "FAILED"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "scenarioKey",
+                "onStatus"
+              ]
+            }
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1525,8 +1717,8 @@
           }
         },
         "required": [
-          "id",
-          "name"
+          "name",
+          "key"
         ]
       },
       "ScenarioSuiteSummary": {
@@ -1989,6 +2181,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "suiteRunId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "dataSetId": {
             "type": "string",
             "format": "uuid"
@@ -2005,6 +2201,7 @@
               "IN_PROGRESS",
               "PASSED",
               "FAILED",
+              "FAILED_STUCK",
               "CANCELLED"
             ]
           },
@@ -2066,6 +2263,91 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/StepResult"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SuiteRunCreateRequest": {
+        "type": "object",
+        "properties": {
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dataSetTag": {
+            "type": "string"
+          },
+          "runMode": {
+            "type": "string",
+            "enum": [
+              "PARALLEL",
+              "SEQUENTIAL"
+            ],
+            "default": "PARALLEL"
+          },
+          "parallelism": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 4
+          }
+        },
+        "required": [
+          "suiteId"
+        ]
+      },
+      "SuiteRunSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "suiteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "IN_PROGRESS",
+              "PASSED",
+              "FAILED"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "suiteId",
+          "status"
+        ]
+      },
+      "SuiteRunDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SuiteRunSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "testRuns": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TestRunSummary"
                 }
               }
             }

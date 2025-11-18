@@ -1,0 +1,114 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: orchestra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-orchestra}
+      POSTGRES_USER: ${POSTGRES_USER:-orchestra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orchestra}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orchestra}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: orchestra-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-orchestra}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-orchestra}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: orchestra-keycloak
+    command:
+      - start-dev
+      - --http-port=8080
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8080:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "curl -f http://localhost:8080/realms/master" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_started
+
+  orchestra-api:
+    container_name: orchestra-api
+    build:
+      context: ../services/orchestra-api
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=${APP_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${APP_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${APP_DB_PASSWORD}
+      - SPRING_RABBITMQ_HOST=${APP_RABBITMQ_HOST}
+      - SPRING_RABBITMQ_USERNAME=${APP_RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${APP_RABBITMQ_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  orchestra-executor:
+    container_name: orchestra-executor
+    build:
+      context: ../services/orchestra-executor
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_RABBITMQ_HOST=${APP_RABBITMQ_HOST}
+      - SPRING_RABBITMQ_USERNAME=${APP_RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${APP_RABBITMQ_PASSWORD}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  orchestra-web:
+    container_name: orchestra-web
+    build:
+      context: ../apps/orchestra-web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_TARGET=http://orchestra-api:8085
+    depends_on:
+      - orchestra-api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  keycloak_data:

@@ -1,0 +1,63 @@
+# macOS / Windows noise
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# IDE/editor settings
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+
+# Local environment overrides
+.env
+.env.local
+.env.*.local
+.envrc
+*.env
+!.env.example
+
+# Logs & runtime artifacts
+*.log
+*.tmp
+*.pid
+*.seed
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node / frontend build output
+node_modules/
+**/node_modules/
+dist/
+build/
+coverage/
+apps/**/dist/
+apps/**/build/
+apps/**/.cache/
+apps/**/.next/
+apps/**/.nuxt/
+apps/**/.turbo/
+apps/**/.vite/
+apps/**/.svelte-kit/
+apps/**/.parcel-cache/
+*.tsbuildinfo
+
+# Java / JVM artifacts
+target/
+**/target/
+*.class
+*.hprof
+hs_err_pid*
+
+# Infrastructure tooling
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+*.tfvars.json
