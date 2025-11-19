@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-081
 title: "Задача 3.1.6 (Backend): Реализация Durable Execution Context"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 12h

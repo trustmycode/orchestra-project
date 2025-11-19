@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-082
 title: "Задача 3.1.7 (Backend): Реализация механизма аренды (Lease) и Heartbeat"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 12h

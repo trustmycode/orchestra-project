@@ -1,7 +1,7 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.dto.TestRunCreateRequest;
-import com.orchestra.api.dto.TestRunDetail;
+import com.orchestra.domain.dto.TestRunCreateRequest;
+import com.orchestra.domain.dto.TestRunDetail;
 import com.orchestra.api.service.TestRunService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -4,14 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orchestra.api.exception.ImportException;
-import com.orchestra.api.model.Process;
-import com.orchestra.api.model.ProcessVersion;
-import com.orchestra.api.model.ProtocolSpec;
-import com.orchestra.api.model.Tenant;
-import com.orchestra.api.repository.ProcessRepository;
-import com.orchestra.api.repository.ProcessVersionRepository;
-import com.orchestra.api.repository.ProtocolSpecRepository;
-import com.orchestra.api.repository.TenantRepository;
+import com.orchestra.domain.model.Process;
+import com.orchestra.domain.model.ProcessVersion;
+import com.orchestra.domain.model.ProtocolSpec;
+import com.orchestra.domain.model.Tenant;
+import com.orchestra.domain.repository.ProcessRepository;
+import com.orchestra.domain.repository.ProcessVersionRepository;
+import com.orchestra.domain.repository.ProtocolSpecRepository;
+import com.orchestra.domain.repository.TenantRepository;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
@@ -38,6 +38,7 @@ public class ImportService {
     private final ProtocolSpecRepository protocolSpecRepository;
     private final TenantRepository tenantRepository;
     private final ObjectMapper objectMapper;
+    private final ArtifactStorageService artifactStorageService;
     private final OpenAPIV3Parser openApiParser = new OpenAPIV3Parser();
 
     private static final UUID DEFAULT_TENANT_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
@@ -72,6 +73,15 @@ public class ImportService {
         processVersion.setVersion(nextVersion);
         processVersion.setName(bpmnProcess.getName());
         processVersion.setSourceType("BPMN");
+
+        String s3Key = "processes/" + processVersion.getId() + "/diagram.bpmn";
+        try {
+            String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+            artifactStorageService.upload(s3Key, content);
+            processVersion.setSourceUri(s3Key);
+        } catch (IOException e) {
+            throw new ImportException("Failed to read BPMN file for upload.", e);
+        }
 
         return processVersionRepository.save(processVersion);
     }

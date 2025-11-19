@@ -1,7 +1,7 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.model.ProcessVersion;
-import com.orchestra.api.model.ProtocolSpec;
+import com.orchestra.domain.model.ProcessVersion;
+import com.orchestra.domain.model.ProtocolSpec;
 import com.orchestra.api.service.ImportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

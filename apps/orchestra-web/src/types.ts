@@ -8,6 +8,12 @@ export interface ProcessModel {
   createdAt: string;
 }
 
+export interface VisualizationData {
+  processId: string;
+  format: 'BPMN' | 'SEQUENCE';
+  sourceUrl: string;
+}
+
 export interface ProtocolSpecSummary {
   id: string;
   protocolId: string;
@@ -52,7 +58,7 @@ export type ScenarioSuiteCreateRequest = Pick<ScenarioSuiteSummary, 'processId' 
 };
 
 export interface ScenarioStep {
-  id: string;
+  id?: string;
   orderIndex: number;
   alias: string;
   name: string;

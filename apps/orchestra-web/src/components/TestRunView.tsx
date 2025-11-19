@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TestRunDetail, TestScenarioDetail, StepResult } from '../types';
-import { getTestRun, getScenario } from '../api';
+import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData } from '../types';
+import { getTestRun, getScenario, getProcessVisualization } from '../api';
 import BpmnDiagram from './BpmnDiagram';
 
 interface Props {
@@ -13,6 +13,8 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
   const [scenario, setScenario] = useState<TestScenarioDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [visualization, setVisualization] = useState<VisualizationData | null>(null);
+  const [visualizationError, setVisualizationError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -37,6 +39,33 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
     };
     loadData();
   }, [testRunId]);
+
+  useEffect(() => {
+    if (!scenario?.processId) {
+      setVisualization(null);
+      setVisualizationError(null);
+      return;
+    }
+
+    let isMounted = true;
+    setVisualizationError(null);
+    getProcessVisualization(scenario.processId)
+      .then((data) => {
+        if (isMounted) {
+          setVisualization(data);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setVisualization(null);
+          setVisualizationError(err instanceof Error ? err.message : 'Failed to load process diagram');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [scenario?.processId]);
 
   if (loading) return <p>Loading test run results...</p>;
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
@@ -106,7 +135,18 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
       {scenario?.processId && (
         <div style={{ marginTop: '1rem' }}>
           <h4>Process Diagram</h4>
-          <BpmnDiagram processId={scenario.processId} highlightSteps={getHighlightSteps()} />
+          {visualizationError && <p style={{ color: 'red' }}>Error: {visualizationError}</p>}
+          {visualization && visualization.format === 'BPMN' && (
+            <BpmnDiagram url={visualization.sourceUrl} highlightSteps={getHighlightSteps()} />
+          )}
+          {visualization && visualization.format === 'SEQUENCE' && (
+            <p>
+              PlantUML visualization not yet available.{' '}
+              <a href={visualization.sourceUrl} target="_blank" rel="noreferrer">
+                Download artifact
+              </a>
+            </p>
+          )}
         </div>
       )}
 

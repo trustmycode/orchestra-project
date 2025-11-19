@@ -1,12 +1,12 @@
 package com.orchestra.api.service;
 
-import com.orchestra.api.dto.TestDataSetDetail;
+import com.orchestra.domain.dto.TestDataSetDetail;
 import com.orchestra.api.exception.ResourceNotFoundException;
-import com.orchestra.api.mapper.TestDataSetMapper;
-import com.orchestra.api.model.Tenant;
-import com.orchestra.api.model.TestDataSet;
-import com.orchestra.api.repository.TenantRepository;
-import com.orchestra.api.repository.TestDataSetRepository;
+import com.orchestra.domain.mapper.TestDataSetMapper;
+import com.orchestra.domain.model.Tenant;
+import com.orchestra.domain.model.TestDataSet;
+import com.orchestra.domain.repository.TenantRepository;
+import com.orchestra.domain.repository.TestDataSetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

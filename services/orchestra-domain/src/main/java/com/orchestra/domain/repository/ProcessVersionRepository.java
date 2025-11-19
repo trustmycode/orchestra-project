@@ -1,0 +1,14 @@
+package com.orchestra.domain.repository;
+
+import com.orchestra.domain.model.Process;
+import com.orchestra.domain.model.ProcessVersion;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface ProcessVersionRepository extends JpaRepository<ProcessVersion, UUID> {
+    Optional<ProcessVersion> findTopByProcessOrderByVersionDesc(Process process);
+}

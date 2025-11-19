@@ -1,16 +1,16 @@
 package com.orchestra.api.service;
 
-import com.orchestra.api.dto.ScenarioSuiteCreateRequest;
-import com.orchestra.api.dto.ScenarioSuiteDetail;
-import com.orchestra.api.dto.ScenarioSuiteSummary;
+import com.orchestra.domain.dto.ScenarioSuiteCreateRequest;
+import com.orchestra.domain.dto.ScenarioSuiteDetail;
+import com.orchestra.domain.dto.ScenarioSuiteSummary;
 import com.orchestra.api.exception.ResourceNotFoundException;
-import com.orchestra.api.mapper.ScenarioSuiteMapper;
-import com.orchestra.api.model.Process;
-import com.orchestra.api.model.ScenarioSuite;
-import com.orchestra.api.model.Tenant;
-import com.orchestra.api.repository.ProcessRepository;
-import com.orchestra.api.repository.ScenarioSuiteRepository;
-import com.orchestra.api.repository.TenantRepository;
+import com.orchestra.domain.mapper.ScenarioSuiteMapper;
+import com.orchestra.domain.model.Process;
+import com.orchestra.domain.model.ScenarioSuite;
+import com.orchestra.domain.model.Tenant;
+import com.orchestra.domain.repository.ProcessRepository;
+import com.orchestra.domain.repository.ScenarioSuiteRepository;
+import com.orchestra.domain.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,8 +1,8 @@
 package com.orchestra.api.service;
 
-import com.orchestra.api.dto.ProtocolSpecSummary;
-import com.orchestra.api.mapper.ProtocolSpecMapper;
-import com.orchestra.api.repository.ProtocolSpecRepository;
+import com.orchestra.domain.dto.ProtocolSpecSummary;
+import com.orchestra.domain.mapper.ProtocolSpecMapper;
+import com.orchestra.domain.repository.ProtocolSpecRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

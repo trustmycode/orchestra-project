@@ -3,23 +3,27 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.1</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.orchestra</groupId>
+        <artifactId>services-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>com.orchestra</groupId>
     <artifactId>orchestra-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <name>orchestra-api</name>
     <description>Orchestra API</description>
-    <properties>
-        <java.version>21</java.version>
-    </properties>
     <dependencies>
+        <dependency>
+            <groupId>com.orchestra</groupId>
+            <artifactId>orchestra-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -36,8 +40,9 @@
             <version>7.21.0</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.11</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
