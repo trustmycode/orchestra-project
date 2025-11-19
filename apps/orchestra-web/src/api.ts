@@ -9,6 +9,7 @@ import {
   ScenarioSuiteDetail,
   ScenarioSuiteCreateRequest,
   JsonRecord,
+  VisualizationData,
 } from './types';
 
 export const getProcesses = async (): Promise<ProcessModel[]> => {
@@ -19,12 +20,12 @@ export const getProcesses = async (): Promise<ProcessModel[]> => {
   return response.json();
 };
 
-export const getProcessXml = async (id: string): Promise<string> => {
-  const response = await fetch(`/api/v1/processes/${id}/xml`);
+export const getProcessVisualization = async (id: string): Promise<VisualizationData> => {
+  const response = await fetch(`/api/v1/processes/${id}/visualization`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch process XML for ${id}`);
+    throw new Error(`Failed to fetch visualization data for ${id}`);
   }
-  return response.text();
+  return response.json();
 };
 
 export const getSpecs = async (): Promise<ProtocolSpecSummary[]> => {

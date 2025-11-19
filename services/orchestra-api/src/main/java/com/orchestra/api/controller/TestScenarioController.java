@@ -1,7 +1,7 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.dto.TestScenarioDetail;
-import com.orchestra.api.dto.TestScenarioSummary;
+import com.orchestra.domain.dto.TestScenarioDetail;
+import com.orchestra.domain.dto.TestScenarioSummary;
 import com.orchestra.api.service.TestScenarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

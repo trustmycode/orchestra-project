@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-051
 title: "Задача 3.1.4 (Backend): Реализация потребителя задач в `orchestra-executor`"
-status: backlog
+status: completed
 priority: high
 type: task
 estimate: 8h

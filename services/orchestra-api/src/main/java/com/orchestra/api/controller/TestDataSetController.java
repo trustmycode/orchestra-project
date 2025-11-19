@@ -1,6 +1,6 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.dto.TestDataSetDetail;
+import com.orchestra.domain.dto.TestDataSetDetail;
 import com.orchestra.api.service.TestDataSetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -44,7 +44,7 @@ const ScenarioBuilderView: React.FC<Props> = ({
         .finally(() => setLoading(false));
     } else {
       setScenario({
-        id: '',
+        id: '', // Placeholder, will be ignored on create
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         suiteId: suiteId || undefined,
@@ -62,15 +62,32 @@ const ScenarioBuilderView: React.FC<Props> = ({
     setLoading(true);
     setError(null);
     try {
+      // === FIX: Очистка временных ID перед отправкой ===
+      const cleanedSteps = scenario.steps.map((step) => {
+        // Если ID начинается с 'temp-', удаляем его, чтобы бэкенд сгенерировал новый UUID
+        if (step.id && step.id.startsWith('temp-')) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id, ...rest } = step;
+          return rest;
+        }
+        return step;
+      });
+
+      // Собираем объект для отправки
+      const scenarioToSend = {
+        ...scenario,
+        steps: cleanedSteps,
+      };
+      // ================================================
+
       let savedScenario: TestScenarioDetail;
       if (scenarioId) {
-        savedScenario = await updateScenario(scenarioId, scenario);
+        savedScenario = await updateScenario(scenarioId, scenarioToSend as TestScenarioDetail);
       } else {
-        const { id: omitId, createdAt: omitCreatedAt, updatedAt: omitUpdatedAt, ...creationData } = scenario;
-        void omitId;
-        void omitCreatedAt;
-        void omitUpdatedAt;
-        savedScenario = await createScenario(creationData);
+        // При создании удаляем служебные поля верхнего уровня, если они пустые
+        const { id: omitId, createdAt: omitCreatedAt, updatedAt: omitUpdatedAt, ...creationData } = scenarioToSend;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        savedScenario = await createScenario(creationData as any);
       }
       onSaveSuccess(savedScenario.id);
     } catch (err) {
@@ -82,14 +99,38 @@ const ScenarioBuilderView: React.FC<Props> = ({
 
   const handleAddStep = () => {
     if (!scenario) return;
+
+    // === FIX: Создаем шаг с заполненной структурой (как в cURL) ===
     const newStep: ScenarioStep = {
-      id: `temp-${Date.now()}`,
-      orderIndex: scenario.steps.length,
-      alias: `step${scenario.steps.length + 1}`,
-      name: 'New Step',
+      id: `temp-${Date.now()}`, // Временный ID для React key
+      orderIndex: scenario.steps.length + 1,
+      alias: `step_${Date.now()}`,
+      name: 'HTTP Request Step',
       kind: 'ACTION',
       channelType: 'HTTP_REST',
+      // Заполняем дефолтными значениями, чтобы Executor не падал
+      endpointRef: {
+        protocolId: 'http',
+        serviceName: 'jsonplaceholder',
+        endpointName: 'getTodo'
+      },
+      action: {
+        mode: 'SYNC',
+        inputTemplate: {
+          method: 'GET',
+          url: 'https://jsonplaceholder.typicode.com/todos/1'
+        },
+        meta: {
+          type: 'HTTP',
+          timeoutMs: 5000
+        }
+      },
+      expectations: {
+        expectedStatusCode: 200
+      }
     };
+    // ==============================================================
+
     setScenario({ ...scenario, steps: [...scenario.steps, newStep] });
   };
 
@@ -102,6 +143,17 @@ const ScenarioBuilderView: React.FC<Props> = ({
     };
     setScenario({ ...scenario, steps: newSteps });
   };
+  
+  // Простая функция для редактирования JSON полей (action, endpointRef) в UI
+  const handleJsonFieldChange = (index: number, field: 'action' | 'endpointRef', jsonString: string) => {
+      if (!scenario) return;
+      try {
+          const parsed = JSON.parse(jsonString);
+          handleStepChange(index, field, parsed);
+      } catch (e) {
+          // Можно добавить валидацию, но пока игнорируем ошибки парсинга при вводе
+      }
+  }
 
   const handleRun = async () => {
     if (!scenarioId) return;
@@ -117,50 +169,83 @@ const ScenarioBuilderView: React.FC<Props> = ({
     }
   };
 
-  if (loading) return <p>Loading scenario...</p>;
-  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
+  if (loading && !scenario) return <p>Loading scenario...</p>;
+  if (error && !scenario) return <p style={{ color: 'red' }}>Error: {error}</p>;
   if (!scenario) return <p>No scenario selected.</p>;
 
   return (
     <div>
       <h2>{scenarioId ? `Edit Scenario: ${scenario.name} (v${scenario.version})` : 'Create New Scenario'}</h2>
-      <div>
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      
+      <div style={{ marginBottom: '1rem' }}>
         <label>Name: </label>
         <input
           type="text"
           value={scenario.name}
           onChange={(e) => setScenario({ ...scenario, name: e.target.value })}
+          style={{ width: '300px' }}
         />
       </div>
 
       <h3>Steps</h3>
-      <button onClick={handleAddStep}>Add Step</button>
+      <button onClick={handleAddStep}>Add HTTP Step (Default)</button>
+      
       {scenario.steps.map((step, index) => (
-        <div key={step.id} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
-          <h4>
-            Step {index + 1}: {step.name}
-          </h4>
-          <div>
-            <label>Name: </label>
-            <input
-              type="text"
-              value={step.name}
-              onChange={(e) => handleStepChange(index, 'name', e.target.value)}
-            />
+        <div key={step.id || index} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0', background: '#fdfdfd' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+             <h4>Step {index + 1}: {step.name} ({step.kind})</h4>
+             <button onClick={() => {
+                 const newSteps = scenario.steps.filter((_, i) => i !== index);
+                 setScenario({...scenario, steps: newSteps});
+             }}>Remove</button>
           </div>
-          <div>
-            <label>Alias: </label>
-            <input
-              type="text"
-              value={step.alias}
-              onChange={(e) => handleStepChange(index, 'alias', e.target.value)}
-            />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label>Name: </label>
+                <input
+                  type="text"
+                  value={step.name}
+                  onChange={(e) => handleStepChange(index, 'name', e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label>Alias: </label>
+                <input
+                  type="text"
+                  value={step.alias}
+                  onChange={(e) => handleStepChange(index, 'alias', e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+          </div>
+
+          <div style={{ marginTop: '10px' }}>
+              <label>Endpoint Ref (JSON):</label>
+              <textarea 
+                rows={3}
+                style={{ width: '100%', fontFamily: 'monospace' }}
+                defaultValue={JSON.stringify(step.endpointRef, null, 2)}
+                onBlur={(e) => handleJsonFieldChange(index, 'endpointRef', e.target.value)}
+              />
+          </div>
+
+          <div style={{ marginTop: '10px' }}>
+              <label>Action (JSON):</label>
+              <textarea 
+                rows={5}
+                style={{ width: '100%', fontFamily: 'monospace' }}
+                defaultValue={JSON.stringify(step.action, null, 2)}
+                onBlur={(e) => handleJsonFieldChange(index, 'action', e.target.value)}
+              />
           </div>
         </div>
       ))}
 
       <hr />
-      <div>
+      <div style={{ marginBottom: '1rem' }}>
         <label>Test Data Set (optional): </label>
         <select value={selectedDataSetId ?? ''} onChange={(e) => setSelectedDataSetId(e.target.value || null)}>
           <option value="">-- None --</option>

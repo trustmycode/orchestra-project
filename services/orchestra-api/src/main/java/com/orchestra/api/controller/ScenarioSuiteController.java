@@ -1,8 +1,8 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.dto.ScenarioSuiteCreateRequest;
-import com.orchestra.api.dto.ScenarioSuiteDetail;
-import com.orchestra.api.dto.ScenarioSuiteSummary;
+import com.orchestra.domain.dto.ScenarioSuiteCreateRequest;
+import com.orchestra.domain.dto.ScenarioSuiteDetail;
+import com.orchestra.domain.dto.ScenarioSuiteSummary;
 import com.orchestra.api.service.ScenarioSuiteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

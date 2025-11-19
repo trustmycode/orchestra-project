@@ -19,6 +19,7 @@ Thumbs.db
 .envrc
 *.env
 !.env.example
+!infra/.env
 
 # Logs & runtime artifacts
 *.log

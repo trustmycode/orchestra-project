@@ -1,21 +1,22 @@
 package com.orchestra.api.service;
 
-import com.orchestra.api.dto.TestScenarioDetail;
-import com.orchestra.api.dto.TestScenarioSummary;
+import com.orchestra.domain.dto.TestScenarioDetail;
+import com.orchestra.domain.dto.TestScenarioSummary;
 import com.orchestra.api.exception.ResourceNotFoundException;
-import com.orchestra.api.mapper.TestScenarioMapper;
-import com.orchestra.api.model.ScenarioStep;
-import com.orchestra.api.model.ScenarioSuite;
-import com.orchestra.api.model.Tenant;
-import com.orchestra.api.model.TestScenario;
-import com.orchestra.api.repository.ScenarioSuiteRepository;
-import com.orchestra.api.repository.TenantRepository;
-import com.orchestra.api.repository.TestScenarioRepository;
+import com.orchestra.domain.mapper.TestScenarioMapper;
+import com.orchestra.domain.model.ScenarioStep;
+import com.orchestra.domain.model.ScenarioSuite;
+import com.orchestra.domain.model.Tenant;
+import com.orchestra.domain.model.TestScenario;
+import com.orchestra.domain.repository.ScenarioSuiteRepository;
+import com.orchestra.domain.repository.TenantRepository;
+import com.orchestra.domain.repository.TestScenarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,9 +55,21 @@ public class TestScenarioService {
                 .orElseThrow(() -> new IllegalStateException("Default tenant not found"));
         scenario.setTenant(tenant);
 
+        if (scenario.getVersion() == null) {
+            scenario.setVersion(1);
+        }
+        if (scenario.getStatus() == null) {
+            scenario.setStatus("DRAFT");
+        }
+        if (scenario.getTags() == null) {
+            scenario.setTags(new ArrayList<>());
+        }
+        scenario.setActive(true);
+
         if (dto.getSuiteId() != null) {
             ScenarioSuite suite = scenarioSuiteRepository.findById(dto.getSuiteId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ScenarioSuite not found with id: " + dto.getSuiteId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "ScenarioSuite not found with id: " + dto.getSuiteId()));
             scenario.setSuite(suite);
         }
 
@@ -93,9 +106,11 @@ public class TestScenarioService {
             });
         }
 
-        if (dto.getSuiteId() != null && (newScenario.getSuite() == null || !newScenario.getSuite().getId().equals(dto.getSuiteId()))) {
+        if (dto.getSuiteId() != null
+                && (newScenario.getSuite() == null || !newScenario.getSuite().getId().equals(dto.getSuiteId()))) {
             ScenarioSuite suite = scenarioSuiteRepository.findById(dto.getSuiteId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ScenarioSuite not found with id: " + dto.getSuiteId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "ScenarioSuite not found with id: " + dto.getSuiteId()));
             newScenario.setSuite(suite);
         } else if (dto.getSuiteId() == null) {
             newScenario.setSuite(null);

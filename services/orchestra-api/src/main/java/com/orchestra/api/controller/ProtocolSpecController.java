@@ -1,6 +1,6 @@
 package com.orchestra.api.controller;
 
-import com.orchestra.api.dto.ProtocolSpecSummary;
+import com.orchestra.domain.dto.ProtocolSpecSummary;
 import com.orchestra.api.service.ProtocolSpecService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
