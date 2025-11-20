@@ -13,4 +13,8 @@ public class TestRunSummary {
     private String status;
     private OffsetDateTime startedAt;
     private OffsetDateTime finishedAt;
+    private UUID environmentId;
+    private String environmentName;
+    private UUID dataSetId;
+    private String dataSetName;
 }

@@ -22,6 +22,14 @@ public class TestRunMapper {
         dto.setStatus(entity.getStatus());
         dto.setStartedAt(entity.getStartedAt());
         dto.setFinishedAt(entity.getFinishedAt());
+        if (entity.getEnvironment() != null) {
+            dto.setEnvironmentId(entity.getEnvironment().getId());
+            dto.setEnvironmentName(entity.getEnvironment().getName());
+        }
+        if (entity.getDataSet() != null) {
+            dto.setDataSetId(entity.getDataSet().getId());
+            dto.setDataSetName(entity.getDataSet().getName());
+        }
         return dto;
     }
 
@@ -33,6 +41,14 @@ public class TestRunMapper {
         dto.setStatus(entity.getStatus());
         dto.setStartedAt(entity.getStartedAt());
         dto.setFinishedAt(entity.getFinishedAt());
+        if (entity.getEnvironment() != null) {
+            dto.setEnvironmentId(entity.getEnvironment().getId());
+            dto.setEnvironmentName(entity.getEnvironment().getName());
+        }
+        if (entity.getDataSet() != null) {
+            dto.setDataSetId(entity.getDataSet().getId());
+            dto.setDataSetName(entity.getDataSet().getName());
+        }
         dto.setExecutionContext(entity.getExecutionContext());
         dto.setStepResults(results.stream().map(this::toDto).collect(Collectors.toList()));
         return dto;

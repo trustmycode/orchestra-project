@@ -1,6 +1,7 @@
 package com.orchestra.api.controller;
 
 import com.orchestra.domain.dto.ProcessModel;
+import com.orchestra.domain.dto.ProcessParticipant;
 import com.orchestra.domain.dto.ProcessVisualizationResponse;
 import com.orchestra.api.service.ProcessService;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +29,10 @@ public class ProcessController {
     @GetMapping("/{processId}/visualization")
     public ResponseEntity<ProcessVisualizationResponse> getVisualization(@PathVariable UUID processId) {
         return ResponseEntity.ok(processService.getVisualization(processId));
+    }
+
+    @GetMapping("/{processId}/participants")
+    public ResponseEntity<List<ProcessParticipant>> getParticipants(@PathVariable UUID processId) {
+        return ResponseEntity.ok(processService.getParticipants(processId));
     }
 }

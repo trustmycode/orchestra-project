@@ -8,4 +8,5 @@ import java.util.UUID;
 public class TestRunCreateRequest {
     private UUID scenarioId;
     private UUID dataSetId;
+    private UUID environmentId;
 }

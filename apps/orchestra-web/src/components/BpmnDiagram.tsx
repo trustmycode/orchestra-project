@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import BpmnViewer from 'bpmn-js';
 import type { BpmnCanvas } from 'bpmn-js';
 import { StepResult } from '../types';
+import { cn } from '../lib/utils';
 
 interface Props {
   url: string;
@@ -76,9 +77,16 @@ const BpmnDiagram: React.FC<Props> = ({ url, highlightSteps }) => {
 
   return (
     <div>
-      {loading && <p>Loading diagram...</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      <div ref={canvasRef} style={{ height: '400px', border: '1px solid #ccc', background: '#f9f9f9' }}></div>
+      {loading && <p className="text-sm text-muted-foreground">Loading diagram...</p>}
+      {error && <p className="text-sm text-destructive">Error: {error}</p>}
+      <div
+        ref={canvasRef}
+        className={cn(
+          'h-[400px] w-full rounded-md border bg-slate-50 transition-colors',
+          'dark:bg-slate-950 dark:border-slate-800',
+          '[&_.djs-container]:dark:invert-[0.92] [&_.djs-container]:dark:hue-rotate-[200deg] [&_.djs-container]:dark:saturate-[0.85]'
+        )}
+      />
     </div>
   );
 };

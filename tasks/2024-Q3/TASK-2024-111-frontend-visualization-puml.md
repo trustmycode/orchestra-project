@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-111
 title: "Задача 5.1.3 (Frontend/Infra): Визуализация PlantUML и превью кода"
-status: backlog
+status: done
 priority: medium
 type: feature
 estimate: 8h

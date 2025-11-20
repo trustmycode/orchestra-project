@@ -8,6 +8,11 @@ export interface ProcessModel {
   createdAt: string;
 }
 
+export interface ProcessParticipant {
+  id: string;
+  name: string;
+}
+
 export interface VisualizationData {
   processId: string;
   format: 'BPMN' | 'SEQUENCE';
@@ -57,6 +62,15 @@ export type ScenarioSuiteCreateRequest = Pick<ScenarioSuiteSummary, 'processId' 
   processVersion?: number;
 };
 
+export interface ScenarioFromProcessRequest {
+  processId: string;
+  processVersion?: number;
+  suiteId?: string;
+  name: string;
+  generationMode: 'ALL_PATHS' | 'HAPPY_PATH_ONLY' | 'CUSTOM_SELECTION';
+  specBindings?: Record<string, string>; // key: participantId, value: specId
+}
+
 export interface ScenarioStep {
   id?: string;
   orderIndex: number;
@@ -89,6 +103,10 @@ export interface TestRunSummary {
   status: 'PENDING' | 'QUEUED' | 'IN_PROGRESS' | 'PASSED' | 'FAILED' | 'CANCELLED';
   startedAt: string;
   finishedAt: string;
+  environmentId?: string;
+  environmentName?: string;
+  dataSetId?: string;
+  dataSetName?: string;
 }
 
 export interface TestRunDetail extends TestRunSummary {
@@ -106,4 +124,29 @@ export interface TestDataSet {
   origin: 'MANUAL' | 'AI_GENERATED' | 'IMPORTED';
   data: JsonRecord;
   createdAt: string;
+}
+
+export interface Environment {
+  id: string;
+  name: string;
+  description?: string;
+  profileMappings: Record<string, Record<string, string>>;
+}
+
+export interface DbConnectionProfile {
+  id: string;
+  name: string;
+  jdbcUrl: string;
+  username?: string;
+  password?: string;
+}
+
+export interface KafkaClusterProfile {
+  id: string;
+  name: string;
+  bootstrapServers: string;
+  securityProtocol?: string;
+  saslMechanism?: string;
+  username?: string;
+  password?: string;
 }

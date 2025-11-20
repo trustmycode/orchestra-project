@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ScenarioSuiteDetail } from '../types';
 import { getScenarioSuiteDetail } from '../api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Button } from './ui/button';
+import StatusBadge from './StatusBadge';
 
 interface Props {
   suiteId: string;
@@ -33,46 +36,52 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
   if (!suite) return <p>Suite not found.</p>;
 
   return (
-    <div>
-      <button onClick={onBack} style={{ marginBottom: '1rem' }}>
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={onBack} className="mb-4">
         &larr; Back to Suites
-      </button>
-      <h2>{suite.name}</h2>
-      <p>
-        <strong>Process ID:</strong> {suite.processId}
-      </p>
-      {suite.description && <p>{suite.description}</p>}
+      </Button>
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">{suite.name}</h2>
+        <p className="text-muted-foreground">Process ID: {suite.processId}</p>
+        {suite.description && <p className="mt-2">{suite.description}</p>}
+      </div>
 
-      <h3>Scenarios in this Suite</h3>
-      <button onClick={() => onCreateScenario(suite.id)} style={{ marginBottom: '1rem' }}>
-        Create New Scenario
-      </button>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold">Scenarios</h3>
+        <Button onClick={() => onCreateScenario(suite.id)}>Create New Scenario</Button>
+      </div>
 
       {suite.scenarios.length === 0 ? (
         <p>No scenarios in this suite yet.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Version</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {suite.scenarios.map((scenario) => (
-              <tr key={scenario.id}>
-                <td>{scenario.name}</td>
-                <td>{scenario.status}</td>
-                <td>{scenario.version}</td>
-                <td>
-                  <button onClick={() => onSelectScenario(scenario.id)}>Edit</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Version</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {suite.scenarios.map((scenario) => (
+                <TableRow key={scenario.id}>
+                  <TableCell className="font-medium">{scenario.name}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={scenario.status} />
+                  </TableCell>
+                  <TableCell>v{scenario.version}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => onSelectScenario(scenario.id)}>
+                      Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

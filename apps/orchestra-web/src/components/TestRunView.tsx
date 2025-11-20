@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData } from '../types';
+import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData, TestDataSet } from '../types';
 import { getTestRun, getScenario, getProcessVisualization } from '../api';
 import BpmnDiagram from './BpmnDiagram';
+import SequenceDiagramViewer from './SequenceDiagramViewer';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Button } from './ui/button';
+import StatusBadge from './StatusBadge';
 
 interface Props {
   testRunId: string;
@@ -71,19 +75,6 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
   if (!testRun) return <p>Test run not found.</p>;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PASSED':
-        return 'green';
-      case 'FAILED':
-        return 'red';
-      case 'SKIPPED':
-        return 'gray';
-      default:
-        return 'black';
-    }
-  };
-
   const getHighlightSteps = () => {
     if (!scenario || !testRun) return [];
 
@@ -92,6 +83,7 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
     return testRun.stepResults
       .map<{ elementId: string; status: StepResult['status'] } | null>((result) => {
         const step = stepMap.get(result.stepAlias);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const actionMeta = step?.action as { meta?: { bpmnElementId?: unknown } } | undefined;
         const elementId =
           actionMeta?.meta?.bpmnElementId && typeof actionMeta.meta.bpmnElementId === 'string'
@@ -106,69 +98,83 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
   };
 
   return (
-    <div>
-      <h2>Test Run Report</h2>
-      <button onClick={onBack} style={{ marginBottom: '1rem' }}>
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={onBack} className="mb-4">
         Back to Scenarios
-      </button>
-      <div>
-        <p>
-          <strong>Run ID:</strong> {testRun.id}
-        </p>
-        <p>
-          <strong>Scenario ID:</strong> {testRun.scenarioId}
-        </p>
-        <p>
-          <strong>Status:</strong>{' '}
-          <span style={{ color: getStatusColor(testRun.status), fontWeight: 'bold' }}>
-            {testRun.status}
-          </span>
-        </p>
-        <p>
-          <strong>Started:</strong> {new Date(testRun.startedAt).toLocaleString()}
-        </p>
-        <p>
-          <strong>Finished:</strong> {new Date(testRun.finishedAt).toLocaleString()}
-        </p>
+      </Button>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">Status</div>
+          <div className="mt-1 text-2xl font-bold">
+            <StatusBadge status={testRun.status} />
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">Run ID</div>
+          <div className="mt-2 truncate text-xs font-mono" title={testRun.id}>
+            {testRun.id}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">Started</div>
+          <div className="mt-1 text-sm font-medium">{new Date(testRun.startedAt).toLocaleString()}</div>
+        </div>
+        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">Finished</div>
+          <div className="mt-1 text-sm font-medium">{new Date(testRun.finishedAt).toLocaleString()}</div>
+        </div>
+      </div>
+      
+      <div className="grid gap-4 md:grid-cols-2">
+        {testRun.environmentName && (
+          <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+            <span className="font-medium text-muted-foreground">Environment:</span> {testRun.environmentName}
+          </div>
+        )}
+        {testRun.dataSetName && (
+          <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+            <span className="font-medium text-muted-foreground">Data Set:</span> {testRun.dataSetName}
+          </div>
+        )}
       </div>
 
       {scenario?.processId && (
-        <div style={{ marginTop: '1rem' }}>
-          <h4>Process Diagram</h4>
+        <div className="rounded-lg border bg-card p-4">
+          <h4 className="mb-4 text-lg font-semibold">Process Diagram</h4>
           {visualizationError && <p style={{ color: 'red' }}>Error: {visualizationError}</p>}
           {visualization && visualization.format === 'BPMN' && (
             <BpmnDiagram url={visualization.sourceUrl} highlightSteps={getHighlightSteps()} />
           )}
           {visualization && visualization.format === 'SEQUENCE' && (
-            <p>
-              PlantUML visualization not yet available.{' '}
-              <a href={visualization.sourceUrl} target="_blank" rel="noreferrer">
-                Download artifact
-              </a>
-            </p>
+            <SequenceDiagramViewer url={visualization.sourceUrl} />
           )}
         </div>
       )}
 
-      <h3>Step Results</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Alias</th>
-            <th>Status</th>
-            <th>Duration (ms)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {testRun.stepResults.map((result) => (
-            <tr key={result.stepId}>
-              <td>{result.stepAlias}</td>
-              <td style={{ color: getStatusColor(result.status) }}>{result.status}</td>
-              <td>{result.durationMs}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <h3 className="text-xl font-semibold">Step Results</h3>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Alias</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Duration (ms)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {testRun.stepResults.map((result) => (
+              <TableRow key={result.stepId}>
+                <TableCell className="font-medium">{result.stepAlias}</TableCell>
+                <TableCell>
+                  <StatusBadge status={result.status} />
+                </TableCell>
+                <TableCell>{result.durationMs}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

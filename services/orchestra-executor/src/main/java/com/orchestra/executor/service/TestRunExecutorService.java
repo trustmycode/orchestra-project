@@ -155,7 +155,7 @@ public class TestRunExecutorService {
                 .orElseThrow(() -> new RuntimeException("No plugin for " + step.getChannelType()));
 
         OffsetDateTime start = OffsetDateTime.now();
-        plugin.execute(step, context);
+        plugin.execute(step, context, run);
         OffsetDateTime finish = OffsetDateTime.now();
 
         Map<String, Object> delta = new HashMap<>();

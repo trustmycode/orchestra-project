@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ScenarioSuiteSummary, ProcessModel, ScenarioSuiteCreateRequest } from '../types';
+import { Sparkles } from 'lucide-react';
+import {
+  ScenarioSuiteSummary,
+  ProcessModel,
+  ScenarioSuiteCreateRequest,
+  ProtocolSpecSummary,
+} from '../types';
 import { createScenarioSuite } from '../api';
+import AiWizard from './ai/AiWizard';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
 
 const CreateSuiteForm: React.FC<{
   processes: ProcessModel[];
@@ -27,59 +38,75 @@ const CreateSuiteForm: React.FC<{
   };
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '1rem', margin: '1rem 0' }}>
-      <h3>Create New Suite</h3>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Name: </label>
-          <input
-            type="text"
-            value={newSuite.name}
-            onChange={(e) => setNewSuite({ ...newSuite, name: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label>Process: </label>
-          <select
-            value={newSuite.processId}
-            onChange={(e) => setNewSuite({ ...newSuite, processId: e.target.value })}
-            required
-          >
-            {processes.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.id.substring(0, 8)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Description: </label>
-          <textarea
-            value={newSuite.description || ''}
-            onChange={(e) => setNewSuite({ ...newSuite, description: e.target.value })}
-          />
-        </div>
-        <button type="submit" disabled={loading || !newSuite.processId}>
-          {loading ? 'Saving...' : 'Save Suite'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={loading} style={{ marginLeft: '1rem' }}>
-          Cancel
-        </button>
-      </form>
-    </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Create New Suite</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid w-full items-center gap-1.5">
+            <label className="text-sm font-medium">Name</label>
+            <Input
+              type="text"
+              value={newSuite.name}
+              onChange={(e) => setNewSuite({ ...newSuite, name: e.target.value })}
+              required
+            />
+          </div>
+          <div className="grid w-full items-center gap-1.5">
+            <label className="text-sm font-medium">Process</label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={newSuite.processId}
+              onChange={(e) => setNewSuite({ ...newSuite, processId: e.target.value })}
+              required
+            >
+              {processes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.id.substring(0, 8)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid w-full items-center gap-1.5">
+            <label className="text-sm font-medium">Description</label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={newSuite.description || ''}
+              onChange={(e) => setNewSuite({ ...newSuite, description: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={onCancel} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading || !newSuite.processId}>
+              {loading ? 'Saving...' : 'Save Suite'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
 interface Props {
   suites: ScenarioSuiteSummary[];
   processes: ProcessModel[];
+  specs: ProtocolSpecSummary[];
   onSelectSuite: (id: string) => void;
   onSuitesChange: () => void;
 }
 
-const ScenarioSuiteListView: React.FC<Props> = ({ suites, processes, onSelectSuite, onSuitesChange }) => {
+const ScenarioSuiteListView: React.FC<Props> = ({
+  suites,
+  processes,
+  specs,
+  onSelectSuite,
+  onSuitesChange,
+}) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,9 +127,15 @@ const ScenarioSuiteListView: React.FC<Props> = ({ suites, processes, onSelectSui
   return (
     <div>
       <h2>Scenario Suites</h2>
-      <button onClick={() => setIsCreating(true)} style={{ marginBottom: '1rem' }}>
-        Create New Suite
-      </button>
+      <div className="mb-4 flex flex-wrap gap-3">
+        {!isCreating && (
+          <Button onClick={() => setIsCreating(true)}>Create New Suite</Button>
+        )}
+        <Button variant="ai" onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          Generate with AI
+        </Button>
+      </div>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       {isCreating && (
         <CreateSuiteForm
@@ -115,31 +148,48 @@ const ScenarioSuiteListView: React.FC<Props> = ({ suites, processes, onSelectSui
       {suites.length === 0 ? (
         <p>No scenario suites created yet.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Process ID</th>
-              <th>Tags</th>
-              <th>Last Updated</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {suites.map((suite) => (
-              <tr key={suite.id}>
-                <td>{suite.name}</td>
-                <td title={suite.processId}>{suite.processId.substring(0, 8)}...</td>
-                <td>{suite.tags?.join(', ')}</td>
-                <td>{new Date(suite.updatedAt).toLocaleString()}</td>
-                <td>
-                  <button onClick={() => onSelectSuite(suite.id)}>View Details</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Process ID</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {suites.map((suite) => (
+                <TableRow key={suite.id}>
+                  <TableCell className="font-medium">{suite.name}</TableCell>
+                  <TableCell className="font-mono text-xs" title={suite.processId}>
+                    {suite.processId.substring(0, 8)}...
+                  </TableCell>
+                  <TableCell>{suite.tags?.join(', ')}</TableCell>
+                  <TableCell>{new Date(suite.updatedAt).toLocaleString()}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => onSelectSuite(suite.id)}>
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
+
+      <AiWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        processes={processes}
+        specs={specs}
+        onSuccess={() => {
+          setIsWizardOpen(false);
+          onSuitesChange();
+        }}
+      />
     </div>
   );
 };
