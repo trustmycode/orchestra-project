@@ -1,0 +1,11 @@
+openapi: 3.0.0
+info:
+  title: JSONPlaceholder
+  version: 1.0.0
+paths:
+  /todos/1:
+    get:
+      summary: Get Todo
+      responses:
+        '200':
+          description: OK

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_Simple_Test" name="Simple Test Process" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1" name="Start" />
+    <bpmn:task id="Task_HTTP" name="Call External API" />
+    <bpmn:task id="Task_DB" name="Check Database" />
+    <bpmn:endEvent id="EndEvent_1" name="End" />
+  </bpmn:process>
+</bpmn:definitions>

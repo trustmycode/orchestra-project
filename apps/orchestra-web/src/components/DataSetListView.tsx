@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { TestDataSet } from '../types';
 import { createTestDataSet, updateTestDataSet, deleteTestDataSet, generateAiDataSimple } from '../api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Button } from './ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
 
 interface Props {
   dataSets: TestDataSet[];
@@ -74,44 +78,50 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     if (!editingDataSet) return null;
 
     return (
-      <div style={{ border: '1px solid #ccc', padding: '1rem', margin: '1rem 0' }}>
-        <h3>{editingDataSet.id ? 'Edit' : 'Create'} Data Set</h3>
-        <div>
-          <label>Name: </label>
-          <input
-            type="text"
-            value={editingDataSet.name || ''}
-            onChange={(e) => setEditingDataSet({ ...editingDataSet, name: e.target.value })}
-          />
-        </div>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <label>Data (JSON): </label>
-            <button onClick={handleGenerateAiData} disabled={aiLoading || loading} style={{ marginLeft: '1rem' }}>
-              {aiLoading ? 'Generating...' : 'Generate with AI'}
-            </button>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>{editingDataSet.id ? 'Edit' : 'Create'} Data Set</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid w-full items-center gap-1.5">
+            <label className="text-sm font-medium leading-none">Name</label>
+            <Input
+              type="text"
+              value={editingDataSet.name || ''}
+              onChange={(e) => setEditingDataSet({ ...editingDataSet, name: e.target.value })}
+              placeholder="e.g. Global Config"
+            />
           </div>
-          <textarea
-            rows={10}
-            style={{ width: '100%' }}
-            value={JSON.stringify(editingDataSet.data || {}, null, 2)}
-            onChange={(e) => {
-              try {
-                const parsedData = JSON.parse(e.target.value);
-                setEditingDataSet({ ...editingDataSet, data: parsedData });
-              } catch {
-                // Ignore invalid JSON while typing
-              }
-            }}
-          />
-        </div>
-        <button onClick={handleSave} disabled={loading || aiLoading}>
-          {loading ? 'Saving...' : 'Save'}
-        </button>
-        <button onClick={() => setEditingDataSet(null)} disabled={loading || aiLoading} style={{ marginLeft: '1rem' }}>
-          Cancel
-        </button>
-      </div>
+          <div className="grid w-full gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium leading-none">Data (JSON)</label>
+              <Button variant="ai" size="sm" onClick={handleGenerateAiData} disabled={aiLoading || loading}>
+                {aiLoading ? 'Generating...' : '✨ Generate with AI'}
+              </Button>
+            </div>
+            <textarea
+              className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+              value={JSON.stringify(editingDataSet.data || {}, null, 2)}
+              onChange={(e) => {
+                try {
+                  const parsedData = JSON.parse(e.target.value);
+                  setEditingDataSet({ ...editingDataSet, data: parsedData });
+                } catch {
+                  // Ignore invalid JSON while typing
+                }
+              }}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setEditingDataSet(null)} disabled={loading || aiLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={loading || aiLoading}>
+            {loading ? 'Saving...' : 'Save'}
+          </Button>
+        </CardFooter>
+      </Card>
     );
   };
 
@@ -119,44 +129,48 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     <div>
       <h2>Test Data Sets</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      <button onClick={() => setEditingDataSet(emptyDataSet)} style={{ marginBottom: '1rem' }}>
-        Create New Data Set
-      </button>
+      {!editingDataSet && (
+        <Button onClick={() => setEditingDataSet(emptyDataSet)} className="mb-4">
+          Create New Data Set
+        </Button>
+      )}
 
       {renderForm()}
 
       {dataSets.length === 0 ? (
         <p>No data sets created yet.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Scope</th>
-              <th>Origin</th>
-              <th>Created At</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dataSets.map((dataSet) => (
-              <tr key={dataSet.id}>
-                <td>{dataSet.name}</td>
-                <td>{dataSet.scope}</td>
-                <td>{dataSet.origin}</td>
-                <td>{new Date(dataSet.createdAt).toLocaleString()}</td>
-                <td>
-                  <button onClick={() => setEditingDataSet(dataSet)} disabled={loading}>
-                    Edit
-                  </button>
-                  <button onClick={() => handleDelete(dataSet.id)} disabled={loading} style={{ marginLeft: '0.5rem' }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Scope</TableHead>
+                <TableHead>Origin</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dataSets.map((dataSet) => (
+                <TableRow key={dataSet.id}>
+                  <TableCell className="font-medium">{dataSet.name}</TableCell>
+                  <TableCell>{dataSet.scope}</TableCell>
+                  <TableCell>{dataSet.origin}</TableCell>
+                  <TableCell>{new Date(dataSet.createdAt).toLocaleString()}</TableCell>
+                  <TableCell className="space-x-2 text-right">
+                    <Button variant="outline" size="sm" onClick={() => setEditingDataSet(dataSet)} disabled={loading}>
+                      Edit
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(dataSet.id)} disabled={loading}>
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

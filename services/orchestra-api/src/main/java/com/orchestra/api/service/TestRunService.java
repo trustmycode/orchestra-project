@@ -5,10 +5,12 @@ import com.orchestra.domain.dto.TestRunCreateRequest;
 import com.orchestra.domain.dto.TestRunDetail;
 import com.orchestra.api.exception.ResourceNotFoundException;
 import com.orchestra.domain.mapper.TestRunMapper;
+import com.orchestra.domain.model.Environment;
 import com.orchestra.domain.model.TestDataSet;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.model.TestScenario;
 import com.orchestra.domain.model.TestStepResult;
+import com.orchestra.domain.repository.EnvironmentRepository;
 import com.orchestra.domain.repository.TestDataSetRepository;
 import com.orchestra.domain.repository.TestRunRepository;
 import com.orchestra.domain.repository.TestScenarioRepository;
@@ -33,6 +35,7 @@ public class TestRunService {
     private final TestScenarioRepository testScenarioRepository;
     private final TestStepResultRepository testStepResultRepository;
     private final TestDataSetRepository testDataSetRepository;
+    private final EnvironmentRepository environmentRepository;
     private final TestRunMapper mapper;
     private final RabbitTemplate rabbitTemplate;
 
@@ -55,6 +58,12 @@ public class TestRunService {
                     .orElseThrow(() -> new ResourceNotFoundException("TestDataSet not found with id: " + request.getDataSetId()));
         }
 
+        Environment environment = null;
+        if (request.getEnvironmentId() != null) {
+            environment = environmentRepository.findById(request.getEnvironmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Environment not found with id: " + request.getEnvironmentId()));
+        }
+
         TestRun run = new TestRun();
         run.setId(UUID.randomUUID());
         run.setScenario(scenario);
@@ -63,6 +72,7 @@ public class TestRunService {
         run.setStatus("QUEUED");
         run.setTenant(scenario.getTenant());
         run.setDataSet(dataSet);
+        run.setEnvironment(environment);
         testRunRepository.save(run);
 
         rabbitTemplate.convertAndSend(

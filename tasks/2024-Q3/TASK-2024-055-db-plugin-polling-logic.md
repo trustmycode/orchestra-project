@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-055
 title: "Задача 3.2.3 (Backend): Реализация логики polling и валидации для DB-шагов"
-status: backlog
+status: completed
 priority: medium
 type: task
 estimate: 4h
@@ -10,6 +10,8 @@ updated: 2024-07-30
 parents: [TASK-2024-023]
 dependencies: [TASK-2024-054]
 arch_refs: [ARCH-protocol-plugins]
+audit_log:
+  - {date: 2024-07-30, user: "@AI-Developer", action: "implemented polling and validation logic"}
 ---
 ## Описание
 Реализовать в `DbProtocolPlugin` основную логику выполнения `ASSERTION`: polling SQL-запроса и валидацию результата.

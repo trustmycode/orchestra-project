@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-114
 title: "Задача 4.4.12 (Backend): API для получения метаданных процесса (участники/дорожки)"
-status: backlog
+status: done
 priority: medium
 type: task
 estimate: 4h
@@ -19,4 +19,3 @@ arch_refs: [ARCH-data-model]
 
 ## Критерии приемки
 -   Эндпоинт возвращает корректный список участников для загруженного BPMN-процесса.
-
