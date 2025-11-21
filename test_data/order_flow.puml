@@ -1,0 +1,39 @@
+@startuml
+title Order Processing Flow
+
+actor "Client" as Client
+participant "Order Service" as OrderService
+participant "Payment Service" as PaymentService
+database "Main DB" as DB
+
+' Начало процесса
+Client -> OrderService: POST /api/orders (Create Order)
+activate OrderService
+
+' Обращение к БД (побочный эффект)
+OrderService -> DB: INSERT INTO orders (status='PENDING')
+activate DB
+DB --> OrderService: Order Created (ID: 101)
+deactivate DB
+
+' Ветвление логики (Exclusive Gateway)
+alt Payment Successful
+    OrderService -> PaymentService: POST /charge
+    activate PaymentService
+    PaymentService --> OrderService: 200 OK (Transaction ID)
+    deactivate PaymentService
+
+    OrderService -> DB: UPDATE orders SET status='PAID'
+    OrderService --> Client: 200 OK (Order Confirmed)
+else Payment Failed
+    OrderService -> PaymentService: POST /charge
+    activate PaymentService
+    PaymentService --> OrderService: 402 Payment Required
+    deactivate PaymentService
+
+    OrderService -> DB: UPDATE orders SET status='CANCELLED'
+    OrderService --> Client: 400 Bad Request (Payment Failed)
+end
+
+deactivate OrderService
+@enduml

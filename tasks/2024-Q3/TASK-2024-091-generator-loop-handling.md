@@ -8,6 +8,7 @@ estimate: 8h
 created: 2024-07-30
 parents: [TASK-2024-031]
 dependencies: [TASK-2024-043]
+arch_refs: [ADR-0010]
 ---
 ## Описание
 Реализовать в `ProcessToScenarioGenerator` обработку циклов в BPMN-схеме.

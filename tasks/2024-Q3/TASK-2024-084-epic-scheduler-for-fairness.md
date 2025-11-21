@@ -9,7 +9,7 @@ created: 2024-07-30
 parents: [TASK-2024-027]
 children: [TASK-2024-085, TASK-2024-086, TASK-2024-087, TASK-2024-088]
 dependencies: [TASK-2024-022]
-arch_refs: [ADR-0020, ARCH-security-multitenancy]
+arch_refs: [ADR-0020, ADR-0027, ARCH-security-multitenancy]
 ---
 ## Описание
 Создать компонент-планировщик, который будет управлять потоком задач, поступающих в `Execution Engine`, для обеспечения справедливости (fairness) между тенантами и применения лимитов на параллельное выполнение, как описано в `ADR-0020` и разделе архитектуры про мультиарендность.

@@ -2,6 +2,7 @@ package com.orchestra.api.controller;
 
 import com.orchestra.domain.dto.TestRunCreateRequest;
 import com.orchestra.domain.dto.TestRunDetail;
+import com.orchestra.domain.dto.TestRunSummary;
 import com.orchestra.api.service.TestRunService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -21,6 +23,11 @@ import java.util.UUID;
 public class TestRunController {
 
     private final TestRunService testRunService;
+
+    @GetMapping
+    public ResponseEntity<List<TestRunSummary>> getAllTestRuns() {
+        return ResponseEntity.ok(testRunService.findAll());
+    }
 
     @PostMapping
     public ResponseEntity<TestRunDetail> runTest(@RequestBody TestRunCreateRequest request) {

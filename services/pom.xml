@@ -23,6 +23,7 @@
         <module>orchestra-domain</module>
         <module>orchestra-api</module>
         <module>orchestra-executor</module>
+        <module>ai-service</module>
     </modules>
 
 </project>

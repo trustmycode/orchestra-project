@@ -76,7 +76,7 @@ export interface ScenarioStep {
   orderIndex: number;
   alias: string;
   name: string;
-  kind: 'ACTION' | 'ASSERTION';
+  kind: 'ACTION' | 'ASSERTION' | 'BARRIER';
   channelType: 'HTTP_REST' | 'KAFKA' | 'GRPC' | 'DB' | 'QUEUE';
   endpointRef?: JsonRecord;
   action?: JsonRecord;
@@ -149,4 +149,11 @@ export interface KafkaClusterProfile {
   saslMechanism?: string;
   username?: string;
   password?: string;
+}
+
+export interface DataResolver {
+  id: string;
+  entityName: string;
+  dataSource: string;
+  mapping: string;
 }

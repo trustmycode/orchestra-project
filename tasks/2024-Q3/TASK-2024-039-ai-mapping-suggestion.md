@@ -1,6 +1,6 @@
 ---
 id: TASK-2024-039
-title: "Задача 4.6 (AI): Агент для сопоставления BPMN и API (Mapping Agent)"
+title: "Задача 4.6 (AI): Агент для NLP-анализа и сопоставления (Mapping & Validation Agent)"
 status: backlog
 priority: low
 type: feature

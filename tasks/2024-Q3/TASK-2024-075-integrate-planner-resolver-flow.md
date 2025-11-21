@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-075
 title: "Задача 4.10.3 (Backend): Интеграция потока Planner → Resolver"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h

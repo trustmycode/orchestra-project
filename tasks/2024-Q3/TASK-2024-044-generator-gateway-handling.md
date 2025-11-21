@@ -9,7 +9,7 @@ created: 2024-07-30
 updated: 2024-07-30
 parents: [TASK-2024-031]
 dependencies: [TASK-2024-043]
-arch_refs: []
+arch_refs: [ADR-0010, ADR-0021]
 ---
 ## Описание
 Расширить алгоритм обхода графа для корректной обработки `Exclusive` и `Parallel` шлюзов.

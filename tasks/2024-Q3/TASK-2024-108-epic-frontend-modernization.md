@@ -7,7 +7,7 @@ type: feature
 estimate: 80h
 created: 2024-07-30
 parents: [TASK-2024-027]
-children: [TASK-2024-109, TASK-2024-110, TASK-2024-111, TASK-2024-112, TASK-2024-113]
+children: [TASK-2024-109, TASK-2024-110, TASK-2024-111, TASK-2024-112, TASK-2024-113, TASK-2024-121, TASK-2024-122]
 arch_refs: [ADR-0030]
 ---
 ## Описание

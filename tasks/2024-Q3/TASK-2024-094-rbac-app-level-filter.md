@@ -9,7 +9,7 @@ created: 2024-07-30
 updated: 2024-07-30
 parents: [TASK-2024-028]
 dependencies: [TASK-2024-093]
-arch_refs: [ADR-0012, ARCH-security-multitenancy]
+arch_refs: [ADR-0012, ADR-0028, ARCH-security-multitenancy]
 audit_log:
   - {date: 2024-07-30, user: "@AI-Codex", action: "created"}
 ---

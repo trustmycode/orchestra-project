@@ -1,9 +1,11 @@
 package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Filter;
 
 @Entity
 @Table(name = "user_tenant_roles")
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class UserTenantRole {
 
     @EmbeddedId

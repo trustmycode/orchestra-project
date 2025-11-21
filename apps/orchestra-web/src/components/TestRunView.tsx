@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData, TestDataSet } from '../types';
+import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData } from '../types';
 import { getTestRun, getScenario, getProcessVisualization } from '../api';
 import BpmnDiagram from './BpmnDiagram';
 import SequenceDiagramViewer from './SequenceDiagramViewer';
@@ -21,28 +21,49 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
   const [visualizationError, setVisualizationError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
     const loadData = async () => {
-      setLoading(true);
-      setError(null);
       try {
         const runData = await getTestRun(testRunId);
-        setTestRun(runData);
-        if (runData.scenarioId) {
-          try {
-            const scenarioData = await getScenario(runData.scenarioId);
-            setScenario(scenarioData);
-          } catch (scenarioError) {
-            console.warn(`Could not load scenario ${runData.scenarioId}:`, scenarioError);
+        if (isMounted) {
+          setTestRun(runData);
+          setLoading(false);
+
+          // Stop polling if terminal state
+          if (['PASSED', 'FAILED', 'FAILED_STUCK', 'CANCELLED'].includes(runData.status)) {
+            return;
           }
+
+          // Poll again
+          timeoutId = setTimeout(loadData, 1000);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          setLoading(false);
+        }
       }
     };
+
     loadData();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [testRunId]);
+
+  useEffect(() => {
+    if (!testRun?.scenarioId) return;
+    // Avoid reloading scenario if already loaded for same ID
+    if (scenario && scenario.id === testRun.scenarioId) return;
+
+    getScenario(testRun.scenarioId)
+      .then(setScenario)
+      .catch((err) => console.warn(`Could not load scenario ${testRun.scenarioId}:`, err));
+  }, [testRun?.scenarioId, scenario]);
 
   useEffect(() => {
     if (!scenario?.processId) {

@@ -15,6 +15,8 @@ import {
   Environment,
   DbConnectionProfile,
   KafkaClusterProfile,
+  DataResolver,
+  TestRunSummary,
 } from './types';
 
 export const getProcesses = async (): Promise<ProcessModel[]> => {
@@ -221,6 +223,14 @@ export const runScenario = async (
   return response.json();
 };
 
+export const getTestRuns = async (): Promise<TestRunSummary[]> => {
+  const response = await fetch('/api/v1/testruns');
+  if (!response.ok) {
+    throw new Error('Failed to fetch test runs');
+  }
+  return response.json();
+};
+
 export const getTestRun = async (id: string): Promise<TestRunDetail> => {
   const response = await fetch(`/api/v1/testruns/${id}`);
   if (!response.ok) {
@@ -360,4 +370,52 @@ export const createKafkaProfile = async (profile: Partial<KafkaClusterProfile>):
 export const deleteKafkaProfile = async (id: string): Promise<void> => {
   const response = await fetch(`/api/v1/environments/profiles/kafka/${id}`, { method: 'DELETE' });
   if (!response.ok) throw new Error('Failed to delete Kafka profile');
+};
+
+export const getPrompt = async (key: string): Promise<{ key: string; template: string }> => {
+  const response = await fetch(`/api/v1/ai/prompts/${key}`);
+  if (!response.ok) throw new Error('Failed to fetch prompt');
+  return response.json();
+};
+
+export const updatePrompt = async (key: string, template: string): Promise<void> => {
+  const response = await fetch(`/api/v1/ai/prompts/${key}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template }),
+  });
+  if (!response.ok) throw new Error('Failed to update prompt');
+};
+
+export const getDataResolvers = async (): Promise<DataResolver[]> => {
+  const response = await fetch('/api/v1/data-resolvers');
+  if (!response.ok) throw new Error('Failed to fetch data resolvers');
+  return response.json();
+};
+
+export const createDataResolver = async (resolver: Partial<DataResolver>): Promise<DataResolver> => {
+  const response = await fetch('/api/v1/data-resolvers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(resolver),
+  });
+  if (!response.ok) throw new Error('Failed to create data resolver');
+  return response.json();
+};
+
+export const updateDataResolver = async (id: string, resolver: Partial<DataResolver>): Promise<DataResolver> => {
+  const response = await fetch(`/api/v1/data-resolvers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(resolver),
+  });
+  if (!response.ok) throw new Error('Failed to update data resolver');
+  return response.json();
+};
+
+export const deleteDataResolver = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/data-resolvers/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete data resolver');
 };
