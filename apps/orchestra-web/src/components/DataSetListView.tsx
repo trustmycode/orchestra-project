@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { TestDataSet } from '../types';
-import { createTestDataSet, updateTestDataSet, deleteTestDataSet, generateAiDataSimple } from '../api';
+import { TestDataSet, JsonRecord } from '../types';
+import { createTestDataSet, updateTestDataSet, deleteTestDataSet } from '../api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
+import AiDataGenerationModal from './ai/AiDataGenerationModal';
 
 interface Props {
   dataSets: TestDataSet[];
@@ -24,7 +25,7 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
   const [editingDataSet, setEditingDataSet] = useState<Partial<TestDataSet> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const handleSave = async () => {
     if (!editingDataSet) return;
@@ -46,18 +47,18 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     }
   };
 
-  const handleGenerateAiData = async () => {
+  const handleAiSuccess = (data: JsonRecord, context: { scenarioId?: string; environmentId: string }) => {
     if (!editingDataSet) return;
-    setAiLoading(true);
-    setError(null);
-    try {
-      const generatedData = await generateAiDataSimple();
-      setEditingDataSet({ ...editingDataSet, data: generatedData });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate data with AI');
-    } finally {
-      setAiLoading(false);
-    }
+    setEditingDataSet({
+      ...editingDataSet,
+      data,
+      scope: context.scenarioId ? 'SCENARIO' : editingDataSet.scope,
+      scenarioId: context.scenarioId || editingDataSet.scenarioId,
+      // Reset suiteId if we are binding to a specific scenario to avoid ambiguity,
+      // or keep it if the logic requires. For now, let's prioritize the scenario context.
+      suiteId: context.scenarioId ? undefined : editingDataSet.suiteId,
+    });
+    setIsAiModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -95,8 +96,8 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
           <div className="grid w-full gap-1.5">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium leading-none">Data (JSON)</label>
-              <Button variant="ai" size="sm" onClick={handleGenerateAiData} disabled={aiLoading || loading}>
-                {aiLoading ? 'Generating...' : '✨ Generate with AI'}
+              <Button variant="ai" size="sm" onClick={() => setIsAiModalOpen(true)} disabled={loading}>
+                ✨ Generate with AI
               </Button>
             </div>
             <textarea
@@ -114,10 +115,10 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setEditingDataSet(null)} disabled={loading || aiLoading}>
+          <Button variant="secondary" onClick={() => setEditingDataSet(null)} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading || aiLoading}>
+          <Button onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save'}
           </Button>
         </CardFooter>
@@ -171,6 +172,9 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
             </TableBody>
           </Table>
         </div>
+      )}
+      {isAiModalOpen && (
+        <AiDataGenerationModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} onSuccess={handleAiSuccess} />
       )}
     </div>
   );

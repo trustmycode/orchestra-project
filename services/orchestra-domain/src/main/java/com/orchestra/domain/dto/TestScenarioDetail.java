@@ -1,5 +1,6 @@
 package com.orchestra.domain.dto;
 
+import com.orchestra.domain.model.ScenarioDependency;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
@@ -19,6 +20,7 @@ public class TestScenarioDetail {
     private String status;
     private List<String> tags;
     private List<ScenarioStepDto> steps;
+    private List<ScenarioDependency> dependsOn;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

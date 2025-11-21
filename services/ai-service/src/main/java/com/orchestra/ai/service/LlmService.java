@@ -35,16 +35,18 @@ public class LlmService {
      */
     public GenerationResult generateTyped(Map<String, Object> context, AiReasoningLevel level) {
         Exception lastException = null;
+        String lastError = null;
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 // Delegate to DataPlannerAgent
-                DataPlan plan = dataPlannerAgent.execute(context, level);
+                DataPlan plan = dataPlannerAgent.execute(context, level, lastError);
 
                 // Map DataPlan to GenerationResult
                 return new GenerationResult(plan.criteria(), plan.reasoning());
             } catch (Exception e) {
                 lastException = e;
+                lastError = e.getMessage();
                 log.warn("Attempt {} failed to generate data plan", attempt, e);
             }
         }

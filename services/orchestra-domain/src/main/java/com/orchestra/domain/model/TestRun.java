@@ -30,6 +30,10 @@ public class TestRun {
     private Integer scenarioVersion;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "suite_run_id")
+    private SuiteRun suiteRun;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "data_set_id")
     private TestDataSet dataSet;
 
@@ -105,6 +109,14 @@ public class TestRun {
 
     public void setScenarioVersion(Integer scenarioVersion) {
         this.scenarioVersion = scenarioVersion;
+    }
+
+    public SuiteRun getSuiteRun() {
+        return suiteRun;
+    }
+
+    public void setSuiteRun(SuiteRun suiteRun) {
+        this.suiteRun = suiteRun;
     }
 
     public TestDataSet getDataSet() {

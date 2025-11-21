@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData } from '../types';
-import { getTestRun, getScenario, getProcessVisualization } from '../api';
+import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData, ReportRecommendations } from '../types';
+import { getTestRun, getScenario, getProcessVisualization, analyzeReport } from '../api';
 import BpmnDiagram from './BpmnDiagram';
 import SequenceDiagramViewer from './SequenceDiagramViewer';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import StatusBadge from './StatusBadge';
+import { Sparkles, Loader2, Lightbulb, FileText, Database, GitBranch } from 'lucide-react';
 
 interface Props {
   testRunId: string;
@@ -19,10 +21,12 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [visualization, setVisualization] = useState<VisualizationData | null>(null);
   const [visualizationError, setVisualizationError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<ReportRecommendations | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     const loadData = async () => {
       try {
@@ -118,6 +122,19 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
       .filter((item): item is { elementId: string; status: StepResult['status'] } => item !== null);
   };
 
+  const handleAnalyze = async () => {
+    if (!testRun) return;
+    setAnalyzing(true);
+    try {
+      const data = await analyzeReport(testRun.id);
+      setRecommendations(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack} className="mb-4">
@@ -159,6 +176,62 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
           </div>
         )}
       </div>
+
+      {(testRun.status === 'FAILED' || testRun.status === 'FAILED_STUCK') && (
+        <div className="flex flex-col gap-4">
+          {!recommendations && (
+            <div className="flex justify-end">
+              <Button variant="ai" onClick={handleAnalyze} disabled={analyzing}>
+                {analyzing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                Analyze Failure with AI
+              </Button>
+            </div>
+          )}
+
+          {recommendations && (
+            <Card className="border-violet-200 bg-violet-50/50 dark:border-violet-900 dark:bg-violet-950/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg text-violet-700 dark:text-violet-300">
+                  <Sparkles className="h-5 w-5" /> AI Analysis & Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2 rounded-md border bg-card p-3 shadow-sm">
+                  <h4 className="flex items-center gap-2 font-semibold text-sm">
+                    <GitBranch className="h-4 w-4 text-blue-500" /> Scenario Logic
+                  </h4>
+                  <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-1">
+                    {recommendations.scenarioImprovements.map((rec, i) => <li key={i}>{rec}</li>)}
+                    {recommendations.scenarioImprovements.length === 0 && <li>No issues detected.</li>}
+                  </ul>
+                </div>
+                <div className="space-y-2 rounded-md border bg-card p-3 shadow-sm">
+                  <h4 className="flex items-center gap-2 font-semibold text-sm">
+                    <Database className="h-4 w-4 text-emerald-500" /> Data & State
+                  </h4>
+                  <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-1">
+                    {recommendations.dataImprovements.map((rec, i) => <li key={i}>{rec}</li>)}
+                    {recommendations.dataImprovements.length === 0 && <li>No issues detected.</li>}
+                  </ul>
+                </div>
+                <div className="space-y-2 rounded-md border bg-card p-3 shadow-sm">
+                  <h4 className="flex items-center gap-2 font-semibold text-sm">
+                    <FileText className="h-4 w-4 text-orange-500" /> Specs & Contracts
+                  </h4>
+                  <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-1">
+                    {recommendations.specImprovements.map((rec, i) => <li key={i}>{rec}</li>)}
+                    {recommendations.specImprovements.length === 0 && <li>No issues detected.</li>}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {scenario?.processId && (
         <div className="rounded-lg border bg-card p-4">

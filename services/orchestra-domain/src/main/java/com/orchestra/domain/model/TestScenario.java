@@ -2,8 +2,10 @@ package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -45,6 +47,10 @@ public class TestScenario {
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "depends_on")
+    private List<ScenarioDependency> dependsOn;
 
     @OneToMany(mappedBy = "scenario", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderIndex ASC")
@@ -126,6 +132,14 @@ public class TestScenario {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public List<ScenarioDependency> getDependsOn() {
+        return dependsOn;
+    }
+
+    public void setDependsOn(List<ScenarioDependency> dependsOn) {
+        this.dependsOn = dependsOn;
     }
 
     public boolean isActive() {

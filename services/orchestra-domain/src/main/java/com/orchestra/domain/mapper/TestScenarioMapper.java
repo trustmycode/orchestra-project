@@ -56,6 +56,7 @@ public class TestScenarioMapper {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         dto.setSteps(entity.getSteps().stream().map(this::toDto).collect(Collectors.toList()));
+        dto.setDependsOn(entity.getDependsOn());
         return dto;
     }
 
@@ -66,6 +67,7 @@ public class TestScenarioMapper {
         entity.setVersion(dto.getVersion());
         entity.setStatus(dto.getStatus());
         entity.setTags(dto.getTags());
+        entity.setDependsOn(dto.getDependsOn());
 
         entity.getSteps().clear();
         if (dto.getSteps() != null) {
@@ -86,6 +88,7 @@ public class TestScenarioMapper {
         entity.setVersion(dto.getVersion());
         entity.setStatus(dto.getStatus());
         entity.setTags(dto.getTags());
+        entity.setDependsOn(dto.getDependsOn());
         if (dto.getSteps() != null) {
             entity.setSteps(dto.getSteps().stream().map(stepDto -> {
                 ScenarioStep step = toEntity(stepDto);
@@ -105,6 +108,7 @@ public class TestScenarioMapper {
         dto.setKind(entity.getKind());
         dto.setChannelType(entity.getChannelType());
         dto.setEndpointRef(entity.getEndpointRef());
+        dto.setExportAs(entity.getExportAs());
         dto.setAction(entity.getAction());
         dto.setExpectations(entity.getExpectations());
         return dto;
@@ -119,6 +123,7 @@ public class TestScenarioMapper {
         entity.setKind(dto.getKind());
         entity.setChannelType(dto.getChannelType());
         entity.setEndpointRef(dto.getEndpointRef());
+        entity.setExportAs(dto.getExportAs());
         entity.setAction(dto.getAction());
         entity.setExpectations(dto.getExpectations());
         return entity;

@@ -1,6 +1,18 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Music, FileText, Box, Database, Moon, Sun, LayoutGrid, Settings, Sparkles, History } from 'lucide-react';
+import {
+  Music,
+  FileText,
+  Box,
+  Database,
+  Moon,
+  Sun,
+  LayoutGrid,
+  Settings,
+  Sparkles,
+  History,
+  Layers,
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../theme-provider';
 import { Button } from '../ui/button';
@@ -68,6 +80,7 @@ const MainLayout: React.FC = () => {
             <SidebarItem to="/suites" icon={Box} label="Scenario Suites" />
             <SidebarItem to="/datasets" icon={Database} label="Data Sets" />
             <SidebarItem to="/runs" icon={History} label="Test Runs" />
+            <SidebarItem to="/suite-runs" icon={Layers} label="Suite Runs" />
           </div>
           <div className="mt-6 mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-400">
             AI Tools

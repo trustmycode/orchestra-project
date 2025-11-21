@@ -1,12 +1,12 @@
 ---
 id: TASK-2024-057
 title: "Задача 4.6.1 (Backend): Модель данных и API для SuiteRun"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h
 created: 2024-07-30
-updated: 2024-07-30
+updated: 2025-11-20
 parents: [TASK-2024-056]
 arch_refs: [ADR-0022]
 ---

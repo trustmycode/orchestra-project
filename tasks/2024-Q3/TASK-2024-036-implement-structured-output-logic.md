@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-036
 title: "Задача 2.2.3: Реализация агента со структурированным выводом (Spring AI)"
-status: backlog
+status: completed
 priority: high
 type: task
 estimate: 8h
@@ -24,3 +24,10 @@ arch_refs: [ADR-0016, ADR-0031]
 ## Критерии приемки
 -   Сервис принимает запрос, обращается к LLM и возвращает строго типизированный Java-объект.
 -   Промпт берется из БД.
+
+audit_log:
+  - {
+      date: 2025-11-21,
+      user: "@RoboticSeniorDev",
+      action: "completed with self-correction retry mechanism",
+    }

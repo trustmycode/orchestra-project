@@ -10,9 +10,11 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -32,10 +34,14 @@ public class DataPlannerAgent extends BaseAgent<Map<String, Object>, DataPlan> {
 
     @Override
     public DataPlan execute(Map<String, Object> context) {
-        return execute(context, AiReasoningLevel.MEDIUM);
+        return execute(context, AiReasoningLevel.MEDIUM, null);
     }
 
     public DataPlan execute(Map<String, Object> context, AiReasoningLevel level) {
+        return execute(context, level, null);
+    }
+
+    public DataPlan execute(Map<String, Object> context, AiReasoningLevel level, @Nullable String lastError) {
         BeanOutputConverter<DataPlan> converter = new BeanOutputConverter<>(DataPlan.class);
 
         // Имя промпта синхронизировано с TASK-2024-074 / ADR-0019
@@ -58,14 +64,19 @@ public class DataPlannerAgent extends BaseAgent<Map<String, Object>, DataPlan> {
         log.info("DataPlannerAgent: Generating plan with reasoning level {} (conversationId={})",
                 level, conversationId);
 
+        String userMessage = "Context: " + context;
+        if (lastError != null) {
+            userMessage += "\n\nPrevious attempt failed with error: " + lastError + ". Please ensure valid JSON output matching the schema.";
+        }
+
         // Используем базовый helper, чтобы не дублировать логику advisors/memory
         String rawResponse = callLlm(
                 systemText,
-                "Context: " + context,
+                userMessage,
                 options,
                 conversationId);
 
-        String cleanResponse = cleanResponse(rawResponse);
+        String cleanResponse = Objects.requireNonNull(cleanResponse(rawResponse));
         return converter.convert(cleanResponse);
     }
 
@@ -106,6 +117,6 @@ public class DataPlannerAgent extends BaseAgent<Map<String, Object>, DataPlan> {
         } else if (clean.startsWith("```")) {
             clean = clean.replace("```json", "").replace("```", "").trim();
         }
-        return clean;
+        return Objects.requireNonNullElse(clean, "");
     }
 }

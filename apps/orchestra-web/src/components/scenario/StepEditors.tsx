@@ -1,22 +1,174 @@
 import React, { useState } from "react";
 import { ScenarioStep, Environment, JsonRecord, JsonValue } from "../../types";
+import { generateAiData } from "../../api";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
 
 interface StepEditorProps {
   step: ScenarioStep;
   onChange: (step: ScenarioStep) => void;
   isAdvancedMode: boolean;
   availableEnvironments: Environment[];
+  scenarioId?: string;
+  environmentId?: string;
 }
+
+const PlaceholderHint: React.FC = () => (
+  <p className="text-[10px] text-muted-foreground mt-1">
+    Supports: <code className="bg-muted px-1 rounded">{'{{data.var}}'}</code>, <code className="bg-muted px-1 rounded">{'{{suite.var}}'}</code>, <code className="bg-muted px-1 rounded">{'{{step.alias.response.field}}'}</code>
+  </p>
+);
+
+const ExportAsEditor: React.FC<{
+  exportAs: Record<string, string>;
+  onChange: (val: Record<string, string>) => void;
+}> = ({ exportAs, onChange }) => {
+  const [newVar, setNewVar] = useState("");
+  const [newPath, setNewPath] = useState("");
+
+  const handleAdd = () => {
+    if (newVar && newPath) {
+      onChange({ ...exportAs, [newVar]: newPath });
+      setNewVar("");
+      setNewPath("");
+    }
+  };
+
+  const handleRemove = (key: string) => {
+    const next = { ...exportAs };
+    delete next[key];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+      <label className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+        Data Export (Suite Context)
+      </label>
+      <p className="text-[10px] text-muted-foreground">
+        Export step data to be used by subsequent scenarios via <code>{`{{suite.varName}}`}</code>.
+      </p>
+
+      <div className="space-y-2">
+        {Object.entries(exportAs || {}).map(([key, path]) => (
+          <div key={key} className="flex items-center gap-2 text-sm">
+            <Badge variant="outline" className="font-mono">
+              {key}
+            </Badge>
+            <span className="text-muted-foreground">←</span>
+            <code className="flex-1 rounded bg-muted px-1 py-0.5 text-xs">{path}</code>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-destructive"
+              onClick={() => handleRemove(key)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <Input
+          className="h-8 text-xs"
+          placeholder="Var Name (e.g. orderId)"
+          value={newVar}
+          onChange={(e) => setNewVar(e.target.value)}
+        />
+        <Input
+          className="h-8 text-xs"
+          placeholder="JSON Path (e.g. body.id)"
+          value={newPath}
+          onChange={(e) => setNewPath(e.target.value)}
+        />
+        <Button size="sm" className="h-8" onClick={handleAdd} disabled={!newVar || !newPath}>
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const AiGenButton: React.FC<{
+  scenarioId?: string;
+  stepId?: string;
+  environmentId?: string;
+  onApply: (data: JsonRecord) => void;
+}> = ({ scenarioId, stepId, environmentId, onApply }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
+
+  const isSaved = scenarioId && stepId && !stepId.startsWith("temp-");
+  const canGenerate = isSaved && environmentId;
+
+  const handleGenerate = async () => {
+    if (!canGenerate) return;
+    setLoading(true);
+    setError(null);
+    setNotes(null);
+    try {
+      const response = await generateAiData({
+        scenarioId,
+        stepId,
+        environmentId,
+        mode: "HAPPY_PATH",
+      });
+      onApply(response.data);
+      if (response.notes) setNotes(response.notes);
+    } catch (err) {
+      setError("AI Gen failed");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  let title = "Generate context-aware data with AI";
+  if (!isSaved) title = "Save scenario and step first";
+  else if (!environmentId) title = "Select environment first";
+
+  return (
+    <div className="flex items-center gap-2">
+      {error && <span className="text-[10px] text-destructive">{error}</span>}
+      {notes && (
+        <span
+          className="text-[10px] text-violet-600 max-w-[150px] truncate"
+          title={notes}
+        >
+          {notes}
+        </span>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-xs text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-900/20"
+        onClick={handleGenerate}
+        disabled={!canGenerate || loading}
+        title={title}
+        type="button"
+      >
+        {loading ? (
+          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+        ) : (
+          <Sparkles className="mr-1 h-3 w-3" />
+        )}
+        Generate with AI
+      </Button>
+    </div>
+  );
+};
 
 export const StepEditor: React.FC<StepEditorProps> = ({
   step,
   onChange,
   isAdvancedMode,
   availableEnvironments,
+  scenarioId,
+  environmentId,
 }) => {
   const handleJsonChange = (
     field: "action" | "expectations",
@@ -54,7 +206,14 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   }
 
   if (step.channelType === "HTTP_REST") {
-    return <HttpStepForm step={step} onChange={onChange} />;
+    return (
+      <HttpStepForm
+        step={step}
+        onChange={onChange}
+        scenarioId={scenarioId}
+        environmentId={environmentId}
+      />
+    );
   }
   if (step.channelType === "DB") {
     return (
@@ -62,6 +221,8 @@ export const StepEditor: React.FC<StepEditorProps> = ({
         step={step}
         onChange={onChange}
         envs={availableEnvironments}
+        scenarioId={scenarioId}
+        environmentId={environmentId}
       />
     );
   }
@@ -88,9 +249,12 @@ export const StepEditor: React.FC<StepEditorProps> = ({
 const HttpStepForm: React.FC<{
   step: ScenarioStep;
   onChange: (s: ScenarioStep) => void;
-}> = ({ step, onChange }) => {
+  scenarioId?: string;
+  environmentId?: string;
+}> = ({ step, onChange, scenarioId, environmentId }) => {
   const input = (step.action?.inputTemplate as JsonRecord) || {};
   const meta = (step.action?.meta as JsonRecord) || {};
+  const exportAs = (step.exportAs as Record<string, string>) || {};
 
   const updateInput = (field: string, value: JsonValue) => {
     onChange({
@@ -136,10 +300,19 @@ const HttpStepForm: React.FC<{
             onChange={(e) => updateInput("url", e.target.value)}
             placeholder="https://api.example.com/..."
           />
+          <PlaceholderHint />
         </div>
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium">Body (JSON)</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium">Body (JSON)</label>
+          <AiGenButton
+            scenarioId={scenarioId}
+            stepId={step.id}
+            environmentId={environmentId}
+            onApply={(data) => updateInput("body", data)}
+          />
+        </div>
         <textarea
           className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
           value={
@@ -156,6 +329,7 @@ const HttpStepForm: React.FC<{
             }
           }}
         />
+        <PlaceholderHint />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -188,6 +362,8 @@ const HttpStepForm: React.FC<{
           </select>
         </div>
       </div>
+
+      <ExportAsEditor exportAs={exportAs} onChange={(val) => onChange({ ...step, exportAs: val })} />
     </div>
   );
 };
@@ -196,8 +372,11 @@ const DbAssertionForm: React.FC<{
   step: ScenarioStep;
   onChange: (s: ScenarioStep) => void;
   envs: Environment[];
-}> = ({ step, onChange, envs }) => {
+  scenarioId?: string;
+  environmentId?: string;
+}> = ({ step, onChange, envs, scenarioId, environmentId }) => {
   const meta = (step.action?.meta as JsonRecord) || {};
+  const exportAs = (step.exportAs as Record<string, string>) || {};
   const dbAliases = Array.from(
     new Set(
       envs.flatMap((env) => {
@@ -239,13 +418,30 @@ const DbAssertionForm: React.FC<{
         </div>
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium">SQL Query</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium">SQL Query</label>
+          <AiGenButton
+            scenarioId={scenarioId}
+            stepId={step.id}
+            environmentId={environmentId}
+            onApply={(data) => {
+              const sqlVal =
+                typeof (data as JsonRecord)?.sql === "string"
+                  ? (data as JsonRecord).sql
+                  : typeof (data as unknown) === "string"
+                  ? (data as unknown as string)
+                  : JSON.stringify(data);
+              updateMeta("sql", sqlVal);
+            }}
+          />
+        </div>
         <textarea
           className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
           value={(meta["sql"] as string) || ""}
           onChange={(e) => updateMeta("sql", e.target.value)}
           placeholder="SELECT * FROM users WHERE id = {{userId}}"
         />
+        <PlaceholderHint />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -273,6 +469,8 @@ const DbAssertionForm: React.FC<{
           />
         </div>
       </div>
+
+      <ExportAsEditor exportAs={exportAs} onChange={(val) => onChange({ ...step, exportAs: val })} />
     </div>
   );
 };
@@ -283,6 +481,7 @@ const KafkaAssertionForm: React.FC<{
   envs: Environment[];
 }> = ({ step, onChange, envs }) => {
   const meta = (step.action?.meta as JsonRecord) || {};
+  const exportAs = (step.exportAs as Record<string, string>) || {};
   const kafkaAliases = Array.from(
     new Set(
       envs.flatMap((env) => {
@@ -337,6 +536,7 @@ const KafkaAssertionForm: React.FC<{
           onChange={(e) => updateMeta("keyExpression", e.target.value)}
           placeholder="Exact match string"
         />
+        <PlaceholderHint />
       </div>
       <div className="space-y-1">
         <label className="text-xs font-medium">Value Matcher (Contains)</label>
@@ -345,6 +545,7 @@ const KafkaAssertionForm: React.FC<{
           onChange={(e) => updateMeta("valueExpression", e.target.value)}
           placeholder="Substring to find in message value"
         />
+        <PlaceholderHint />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -360,6 +561,7 @@ const KafkaAssertionForm: React.FC<{
           />
         </div>
       </div>
+      <ExportAsEditor exportAs={exportAs} onChange={(val) => onChange({ ...step, exportAs: val })} />
     </div>
   );
 };

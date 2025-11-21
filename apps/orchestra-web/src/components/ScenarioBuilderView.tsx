@@ -396,6 +396,8 @@ const ScenarioBuilderView: React.FC<Props> = ({
                 onChange={(updated) => handleStepChange(index, updated)}
                 isAdvancedMode={isAdvancedMode}
                 availableEnvironments={availableEnvironments}
+                scenarioId={scenarioId && !scenarioId.startsWith('new') ? scenarioId : undefined}
+                environmentId={selectedEnvId || undefined}
               />
             </CardContent>
           </Card>
