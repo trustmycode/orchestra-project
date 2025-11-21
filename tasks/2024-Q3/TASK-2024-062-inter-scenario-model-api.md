@@ -1,14 +1,16 @@
 ---
 id: TASK-2024-062
 title: "Задача 4.7.1 (Backend): Модель данных для зависимостей и контекста"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h
 created: 2024-07-30
-updated: 2024-07-30
+updated: 2025-11-21
 parents: [TASK-2024-061]
 arch_refs: [ADR-0022]
+audit_log:
+  - {date: 2025-11-21, user: "@RoboticAI", action: "implemented model changes and migrations"}
 ---
 ## Описание
 Обновить доменную модель и схему БД для поддержки зависимостей между сценариями и общего контекста `SuiteRun`.

@@ -1,9 +1,11 @@
 package com.orchestra.executor.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orchestra.domain.model.ScenarioStep;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.model.TestScenario;
 import com.orchestra.domain.model.TestStepResult;
+import com.orchestra.domain.repository.SuiteRunRepository;
 import com.orchestra.domain.repository.TestRunRepository;
 import com.orchestra.domain.repository.TestScenarioRepository;
 import com.orchestra.domain.repository.TestStepResultRepository;
@@ -13,7 +15,6 @@ import com.orchestra.executor.plugin.ProtocolPluginRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
@@ -38,35 +39,48 @@ public class TestRunExecutorService {
     private final TestRunRepository testRunRepository;
     private final TestScenarioRepository testScenarioRepository;
     private final TestStepResultRepository testStepResultRepository;
+    private final SuiteRunRepository suiteRunRepository;
     private final ProtocolPluginRegistry protocolPluginRegistry;
     private final TransactionTemplate transactionTemplate;
+    private final ObjectMapper objectMapper;
 
     private final String workerId = UUID.randomUUID().toString();
     private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
 
     public void execute(UUID testRunId) {
-        log.info("Processing job for TestRun: {}", testRunId);
+        final UUID resolvedTestRunId = Objects.requireNonNull(testRunId, "testRunId must not be null");
+        log.info("Processing job for TestRun: {}", resolvedTestRunId);
 
-        TestRun run = testRunRepository.findById(testRunId)
-                .orElseThrow(() -> new IllegalArgumentException("TestRun not found: " + testRunId));
+        TestRun run = transactionTemplate.execute(status -> {
+            TestRun r = testRunRepository.findById(resolvedTestRunId)
+                    .orElseThrow(() -> new IllegalArgumentException("TestRun not found: " + resolvedTestRunId));
+            if (r.getSuiteRun() != null) {
+                r.getSuiteRun().getId();
+            }
+            return r;
+        });
+
+        if (run == null) {
+            return;
+        }
 
         if (Set.of("PASSED", "FAILED", "CANCELLED", "FAILED_STUCK").contains(run.getStatus())) {
-            log.info("TestRun {} is already in terminal state: {}. Skipping execution.", testRunId, run.getStatus());
+            log.info("TestRun {} is already in terminal state: {}. Skipping execution.", resolvedTestRunId, run.getStatus());
             return;
         }
 
         if ("IN_PROGRESS".equals(run.getStatus()) && run.getLockUntil() != null && run.getLockUntil().isAfter(OffsetDateTime.now())) {
-            log.info("TestRun {} is already running (locked by {}). Skipping execution.", testRunId, run.getLockedBy());
+            log.info("TestRun {} is already running (locked by {}). Skipping execution.", resolvedTestRunId, run.getLockedBy());
             return;
         }
 
-        log.info("Attempting to acquire lock for TestRun: {} with workerId: {}", testRunId, workerId);
-        if (!tryAcquireLock(testRunId)) {
-            log.warn("Could not acquire lock for TestRun: {}. It might be running on another worker.", testRunId);
+        log.info("Attempting to acquire lock for TestRun: {} with workerId: {}", resolvedTestRunId, workerId);
+        if (!tryAcquireLock(resolvedTestRunId)) {
+            log.warn("Could not acquire lock for TestRun: {}. It might be running on another worker.", resolvedTestRunId);
             return;
         }
 
-        ScheduledFuture<?> heartbeatTask = startHeartbeat(testRunId);
+        ScheduledFuture<?> heartbeatTask = startHeartbeat(resolvedTestRunId);
 
         try {
             // 1. Load Scenario
@@ -79,8 +93,16 @@ public class TestRunExecutorService {
                 context.setVariables(new HashMap<>(run.getExecutionContext()));
             }
 
+            // 2.1 Load Suite Context if part of a suite run
+            if (run.getSuiteRun() != null) {
+                Map<String, Object> suiteContext = suiteRunRepository.findContextById(run.getSuiteRun().getId());
+                if (suiteContext != null) {
+                    suiteContext.forEach((k, v) -> context.getVariables().put("suite." + k, v));
+                }
+            }
+
             // 3. Determine steps to run (Resume capability)
-            List<TestStepResult> existingResults = testStepResultRepository.findByRunIdOrderByStartedAtAsc(testRunId);
+            List<TestStepResult> existingResults = testStepResultRepository.findByRunIdOrderByStartedAtAsc(resolvedTestRunId);
             Set<UUID> executedStepIds = existingResults.stream()
                     .map(TestStepResult::getStepId)
                     .collect(Collectors.toSet());
@@ -95,15 +117,15 @@ public class TestRunExecutorService {
 
             // 5. Complete Run
             transactionTemplate.executeWithoutResult(status -> {
-                TestRun r = testRunRepository.findById(testRunId).orElseThrow();
+                TestRun r = testRunRepository.findById(resolvedTestRunId).orElseThrow();
                 r.setStatus("PASSED");
                 r.setFinishedAt(OffsetDateTime.now());
                 testRunRepository.save(r);
             });
         } catch (Exception e) {
-            log.error("TestRun execution failed for id: {}", testRunId, e);
+            log.error("TestRun execution failed for id: {}", resolvedTestRunId, e);
             transactionTemplate.executeWithoutResult(status -> {
-                TestRun r = testRunRepository.findById(testRunId).orElseThrow();
+                TestRun r = testRunRepository.findById(resolvedTestRunId).orElseThrow();
                 r.setStatus("FAILED");
                 r.setFinishedAt(OffsetDateTime.now());
                 testRunRepository.save(r);
@@ -155,7 +177,29 @@ public class TestRunExecutorService {
                 .orElseThrow(() -> new RuntimeException("No plugin for " + step.getChannelType()));
 
         OffsetDateTime start = OffsetDateTime.now();
-        plugin.execute(step, context, run);
+        try {
+            plugin.execute(step, context, run);
+        } catch (Exception e) {
+            OffsetDateTime finish = OffsetDateTime.now();
+            long duration = Duration.between(start, finish).toMillis();
+            log.error("Step {} failed", step.getAlias(), e);
+
+            transactionTemplate.executeWithoutResult(status -> {
+                TestStepResult result = new TestStepResult();
+                result.setRun(run);
+                result.setStepId(step.getId());
+                result.setStepAlias(step.getAlias());
+                result.setStatus("FAILED");
+                result.setStartedAt(start);
+                result.setFinishedAt(finish);
+                result.setDurationMs(duration);
+                result.setInputContextSnapshot(inputSnapshot);
+                result.setViolations(Map.of("violations", List.of(Map.of("message", e.getMessage() != null ? e.getMessage() : "Unknown error"))));
+                testStepResultRepository.save(result);
+            });
+            throw e;
+        }
+
         OffsetDateTime finish = OffsetDateTime.now();
 
         Map<String, Object> delta = new HashMap<>();
@@ -164,6 +208,16 @@ public class TestRunExecutorService {
                 delta.put(k, v);
             }
         });
+
+        Map<String, Object> exports = new HashMap<>();
+        if (step.getExportAs() != null && !step.getExportAs().isEmpty()) {
+            step.getExportAs().forEach((varName, path) -> {
+                Object value = extractValue(context.getVariables(), path);
+                if (value != null) {
+                    exports.put(varName, value);
+                }
+            });
+        }
 
         transactionTemplate.executeWithoutResult(status -> {
             TestStepResult result = new TestStepResult();
@@ -178,9 +232,37 @@ public class TestRunExecutorService {
             result.setOutputContextDelta(delta);
             testStepResultRepository.save(result);
 
-            TestRun currentRun = testRunRepository.findById(run.getId()).orElseThrow();
+            if (!exports.isEmpty() && run.getSuiteRun() != null) {
+                try {
+                    String json = objectMapper.writeValueAsString(exports);
+                    suiteRunRepository.updateContext(run.getSuiteRun().getId(), json);
+                } catch (Exception e) {
+                    log.error("Failed to update suite context for run {}", run.getId(), e);
+                }
+            }
+
+            UUID runId = Objects.requireNonNull(run.getId(), "run id must not be null");
+            TestRun currentRun = testRunRepository.findById(runId).orElseThrow();
             currentRun.setExecutionContext(new HashMap<>(context.getVariables()));
             testRunRepository.save(currentRun);
         });
+
+        exports.forEach((k, v) -> context.getVariables().put("suite." + k, v));
+    }
+
+    private Object extractValue(Map<String, Object> variables, String path) {
+        String[] parts = path.split("\\.");
+        Object current = variables;
+        for (String part : parts) {
+            if (current instanceof Map) {
+                current = ((Map<?, ?>) current).get(part);
+            } else {
+                return null;
+            }
+            if (current == null) {
+                return null;
+            }
+        }
+        return current;
     }
 }

@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-064
 title: "Задача 4.7.3 (Backend): Реализация экспорта данных в orchestra-executor"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h
@@ -10,6 +10,8 @@ updated: 2024-07-30
 parents: [TASK-2024-061]
 dependencies: [TASK-2024-062]
 arch_refs: [ADR-0022]
+audit_log:
+  - {date: 2025-11-21, user: "@RoboticArchitect", action: "implemented data export logic in TestRunExecutorService"}
 ---
 ## Описание
 Доработать `orchestra-executor` для поддержки передачи данных между сценариями в рамках `SuiteRun`.

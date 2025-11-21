@@ -41,6 +41,10 @@ public class ScenarioStep {
     private Map<String, Object> endpointRef;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "export_as")
+    private Map<String, String> exportAs;
+
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> action;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -108,6 +112,14 @@ public class ScenarioStep {
 
     public void setEndpointRef(Map<String, Object> endpointRef) {
         this.endpointRef = endpointRef;
+    }
+
+    public Map<String, String> getExportAs() {
+        return exportAs;
+    }
+
+    public void setExportAs(Map<String, String> exportAs) {
+        this.exportAs = exportAs;
     }
 
     public Map<String, Object> getAction() {

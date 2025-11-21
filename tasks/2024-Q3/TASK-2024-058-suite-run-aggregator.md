@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-058
 title: "Задача 4.6.2 (Backend): Агрегатор статусов и оркестратор SuiteRun"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h

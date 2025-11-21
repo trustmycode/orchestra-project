@@ -12,11 +12,18 @@ import {
   ScenarioFromProcessRequest,
   JsonRecord,
   VisualizationData,
+  AiGenerateDataRequest,
+  AiGenerateDataResponse,
+  AiGenerateScenarioResponse,
   Environment,
   DbConnectionProfile,
   KafkaClusterProfile,
   DataResolver,
   TestRunSummary,
+  SuiteRunSummary,
+  SuiteRunDetail,
+  SuiteRunCreateRequest,
+  ReportRecommendations,
 } from './types';
 
 export const getProcesses = async (): Promise<ProcessModel[]> => {
@@ -204,6 +211,37 @@ export const createScenarioSuite = async (suite: ScenarioSuiteCreateRequest): Pr
   return response.json();
 };
 
+export const createSuiteRun = async (request: SuiteRunCreateRequest): Promise<SuiteRunSummary> => {
+  const response = await fetch('/api/v1/suite-runs', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create suite run');
+  }
+  return response.json();
+};
+
+export const getSuiteRuns = async (): Promise<SuiteRunSummary[]> => {
+  const response = await fetch('/api/v1/suite-runs');
+  if (!response.ok) {
+    throw new Error('Failed to fetch suite runs');
+  }
+  return response.json();
+};
+
+export const getSuiteRun = async (id: string): Promise<SuiteRunDetail> => {
+  const response = await fetch(`/api/v1/suite-runs/${id}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch suite run ${id}`);
+  }
+  return response.json();
+};
+
 export const runScenario = async (
   scenarioId: string,
   dataSetId?: string | null,
@@ -288,6 +326,7 @@ export const deleteTestDataSet = async (id: string): Promise<void> => {
   }
 };
 
+/** @deprecated Use generateAiData instead */
 export const generateAiDataSimple = async (): Promise<JsonRecord> => {
   const response = await fetch('/api/v1/ai/data/generate-simple', {
     method: 'POST',
@@ -295,6 +334,47 @@ export const generateAiDataSimple = async (): Promise<JsonRecord> => {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to generate AI data');
+  }
+  return response.json();
+};
+
+export const generateAiData = async (
+  request: AiGenerateDataRequest
+): Promise<AiGenerateDataResponse> => {
+  const response = await fetch('/api/v1/ai/data/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate AI data');
+  }
+  return response.json();
+};
+
+export const generateDataForScenario = async (
+  scenarioId: string,
+  environmentId: string
+): Promise<AiGenerateScenarioResponse> => {
+  const response = await fetch(`/api/v1/ai/data/generate-scenario/${scenarioId}?environmentId=${environmentId}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate scenario data');
+  }
+  return response.json();
+};
+
+export const analyzeReport = async (testRunId: string): Promise<ReportRecommendations> => {
+  const response = await fetch(`/api/v1/ai/analyze-report/${testRunId}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to analyze report');
   }
   return response.json();
 };

@@ -22,11 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -69,57 +70,83 @@ public class DataResolverService {
         Environment environment = environmentRepository.findById(environmentId)
                 .orElseThrow(() -> new RuntimeException("Environment not found: " + environmentId));
 
-        Map<String, Object> resolvedData = new HashMap<>();
+        // Pre-fetch resolvers to avoid N+1 queries during recursion
+        Map<String, DataResolver> resolvers = dataResolverRepository.findAllByTenantId(environment.getTenant().getId())
+                .stream()
+                .collect(Collectors.toMap(DataResolver::getEntityName, Function.identity()));
 
-        for (Map.Entry<String, Object> entry : planCriteria.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
+        Object result = resolveRecursive(planCriteria, resolvers, environment);
 
-            // 1. Try to find a configured DataResolver for this entity
-            Optional<DataResolver> resolverOpt = dataResolverRepository.findByTenantIdAndEntityName(environment.getTenant().getId(), key);
-
-            if (resolverOpt.isPresent()) {
-                DataResolver resolver = resolverOpt.get();
-                Map<String, Object> spec = new HashMap<>();
-                if (value instanceof Map) {
-                    spec.putAll((Map<String, Object>) value);
-                }
-                spec.put("dataSource", resolver.getDataSource());
-                spec.put("sql", resolver.getMapping());
-
-                try {
-                    Object result = executeSqlResolution(spec, environment);
-                    resolvedData.put(key, result);
-                } catch (Exception e) {
-                    log.error("Failed to resolve data for key '{}' using DataResolver", key, e);
-                    resolvedData.put(key, null);
-                }
-                continue;
-            }
-
-            if (value instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> spec = (Map<String, Object>) value;
-
-                // Check if this is a SQL resolution instruction
-                if (spec.containsKey("dataSource") && (spec.containsKey("sql") || spec.containsKey("semanticCriteria"))) {
-                    try {
-                        Object result = executeSqlResolution(spec, environment);
-                        resolvedData.put(key, result);
-                    } catch (Exception e) {
-                        log.error("Failed to resolve data for key '{}'", key, e);
-                        resolvedData.put(key, null); // Or keep original spec?
-                    }
-                } else {
-                    // Recursive resolution could be added here if needed
-                    resolvedData.put(key, value);
-                }
-            } else {
-                resolvedData.put(key, value);
-            }
+        if (result instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> resultMap = (Map<String, Object>) result;
+            return resultMap;
         }
 
-        return resolvedData;
+        return planCriteria;
+    }
+
+    private Object resolveRecursive(Object value, Map<String, DataResolver> resolvers, Environment environment) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) value;
+
+            // 1. Check for explicit instruction
+            if (map.containsKey("dataSource") && (map.containsKey("sql") || map.containsKey("semanticCriteria"))) {
+                try {
+                    return executeSqlResolution(map, environment);
+                } catch (Exception e) {
+                    log.error("Failed to execute explicit resolution", e);
+                    return null;
+                }
+            }
+
+            // 2. Traverse Map
+            Map<String, Object> resolvedMap = new HashMap<>();
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                String key = entry.getKey();
+                Object val = entry.getValue();
+
+                if (resolvers.containsKey(key)) {
+                    // Resolve using configured resolver
+                    DataResolver resolver = resolvers.get(key);
+                    Map<String, Object> spec = new HashMap<>();
+                    if (val instanceof Map) {
+                        spec.putAll((Map<String, Object>) val);
+                    }
+                    spec.put("dataSource", resolver.getDataSource());
+                    spec.put("sql", resolver.getMapping());
+
+                    try {
+                        Object resolvedVal = executeSqlResolution(spec, environment);
+                        resolvedMap.put(key, resolvedVal);
+                    } catch (Exception e) {
+                        log.error("Failed to resolve data for key '{}' using DataResolver", key, e);
+                        resolvedMap.put(key, null);
+                    }
+                } else {
+                    // Recurse
+                    resolvedMap.put(key, resolveRecursive(val, resolvers, environment));
+                }
+            }
+            return resolvedMap;
+        }
+
+        if (value instanceof List) {
+            List<?> list = (List<?>) value;
+            List<Object> resolvedList = new ArrayList<>();
+            for (Object item : list) {
+                resolvedList.add(resolveRecursive(item, resolvers, environment));
+            }
+            return resolvedList;
+        }
+
+        // Primitive / Leaf
+        return value;
     }
 
     private Object executeSqlResolution(Map<String, Object> spec, Environment environment) {
@@ -171,6 +198,17 @@ public class DataResolverService {
             // Replace with NULL to avoid SQL syntax errors (resulting in empty set).
             log.warn("SQL contains {{ids}} but no semanticCriteria provided. Replacing with NULL.");
             sql = sql.replace("{{ids}}", "NULL");
+        }
+
+        if (sql != null) {
+            for (Map.Entry<String, Object> entry : spec.entrySet()) {
+                if (entry.getValue() != null) {
+                    String placeholder = "{{" + entry.getKey() + "}}";
+                    if (sql.contains(placeholder)) {
+                        sql = sql.replace(placeholder, entry.getValue().toString());
+                    }
+                }
+            }
         }
 
         DataSource dataSource = dataSourceCache.computeIfAbsent(profile.getId(), k -> DataSourceBuilder.create()

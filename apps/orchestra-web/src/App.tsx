@@ -27,6 +27,8 @@ import ScenarioBuilderView from './components/ScenarioBuilderView';
 import TestRunView from './components/TestRunView';
 import DataSetListView from './components/DataSetListView';
 import TestRunListView from './components/TestRunListView';
+import SuiteRunListView from './components/SuiteRunListView';
+import SuiteRunDetailView from './components/SuiteRunDetailView';
 import MainLayout from './components/layout/MainLayout';
 import { ThemeProvider } from './components/theme-provider';
 import SettingsView from './components/SettingsView';
@@ -96,6 +98,11 @@ const AppContent: React.FC = () => {
     );
   };
 
+  const SuiteRunDetailRoute = () => {
+    const { id } = useParams<{ id: string }>();
+    return <SuiteRunDetailView suiteRunId={id!} onBack={() => navigate('/suite-runs')} />;
+  };
+
   const ScenarioBuilderRoute = () => {
     const { id } = useParams<{ id: string }>();
     const query = new URLSearchParams(location.search);
@@ -116,7 +123,7 @@ const AppContent: React.FC = () => {
 
   const TestRunRoute = () => {
     const { id } = useParams<{ id: string }>();
-    return <TestRunView testRunId={id!} onBack={() => navigate(-1)} />;
+    return <TestRunView testRunId={id!} onBack={() => navigate('/runs')} />;
   };
 
   if (loading && processes.length === 0 && suites.length === 0 && scenarios.length === 0) {
@@ -159,6 +166,8 @@ const AppContent: React.FC = () => {
           }
         />
         <Route path="suites/:id" element={<SuiteDetailRoute />} />
+        <Route path="suite-runs" element={<SuiteRunListView />} />
+        <Route path="suite-runs/:id" element={<SuiteRunDetailRoute />} />
         <Route path="scenarios/new" element={<ScenarioBuilderRoute />} />
         <Route path="scenarios/:id" element={<ScenarioBuilderRoute />} />
         <Route path="datasets" element={<DataSetListView dataSets={dataSets} onDataSetsChange={fetchData} />} />

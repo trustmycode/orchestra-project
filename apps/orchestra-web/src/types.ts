@@ -71,6 +71,25 @@ export interface ScenarioFromProcessRequest {
   specBindings?: Record<string, string>; // key: participantId, value: specId
 }
 
+export interface AiGenerateDataRequest {
+  scenarioId?: string;
+  suiteId?: string;
+  stepId?: string;
+  mode?: 'HAPPY_PATH' | 'NEGATIVE' | 'BOUNDARY';
+  environmentId?: string;
+  instructions?: string;
+}
+
+export interface AiGenerateDataResponse {
+  data: JsonRecord;
+  notes: string;
+}
+
+export interface AiGenerateScenarioResponse {
+  globalContext: JsonRecord;
+  stepData: Record<string, JsonRecord>;
+}
+
 export interface ScenarioStep {
   id?: string;
   orderIndex: number;
@@ -83,8 +102,14 @@ export interface ScenarioStep {
   expectations?: JsonRecord;
 }
 
+export interface ScenarioDependency {
+  scenarioKey: string;
+  onStatus: string[];
+}
+
 export interface TestScenarioDetail extends TestScenarioSummary {
   steps: ScenarioStep[];
+  dependsOn?: ScenarioDependency[];
 }
 
 export interface StepResult {
@@ -99,8 +124,9 @@ export interface StepResult {
 export interface TestRunSummary {
   id: string;
   scenarioId: string;
+  scenarioName?: string;
   scenarioVersion: number;
-  status: 'PENDING' | 'QUEUED' | 'IN_PROGRESS' | 'PASSED' | 'FAILED' | 'CANCELLED';
+  status: 'PENDING' | 'QUEUED' | 'IN_PROGRESS' | 'PASSED' | 'FAILED' | 'FAILED_STUCK' | 'CANCELLED' | 'SKIPPED';
   startedAt: string;
   finishedAt: string;
   environmentId?: string;
@@ -156,4 +182,32 @@ export interface DataResolver {
   entityName: string;
   dataSource: string;
   mapping: string;
+}
+
+export interface SuiteRunSummary {
+  id: string;
+  suiteId: string;
+  suiteName?: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'PASSED' | 'FAILED';
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface SuiteRunDetail extends SuiteRunSummary {
+  testRuns?: TestRunSummary[];
+  context?: JsonRecord;
+}
+
+export interface SuiteRunCreateRequest {
+  suiteId: string;
+  environmentId: string;
+  dataSetTag?: string;
+  runMode?: 'PARALLEL' | 'SEQUENTIAL';
+  parallelism?: number;
+}
+
+export interface ReportRecommendations {
+  scenarioImprovements: string[];
+  dataImprovements: string[];
+  specImprovements: string[];
 }

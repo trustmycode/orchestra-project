@@ -1,14 +1,16 @@
 ---
 id: TASK-2024-065
 title: "Задача 4.7.4 (Frontend): UI для настройки зависимостей"
-status: backlog
+status: done
 priority: medium
 type: task
 estimate: 12h
 created: 2024-07-30
-updated: 2024-07-30
+updated: 2025-11-21
 parents: [TASK-2024-061]
 arch_refs: []
+audit_log:
+  - {date: 2025-11-21, user: "@RoboticAI", action: "implemented UI for dependencies and exportAs"}
 ---
 ## Описание
 Реализовать в UI возможности для задания зависимостей между сценариями и настройки экспорта данных.

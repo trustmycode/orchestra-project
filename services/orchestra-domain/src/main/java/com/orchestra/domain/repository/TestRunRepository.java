@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -24,4 +25,7 @@ public interface TestRunRepository extends JpaRepository<TestRun, UUID> {
     @Modifying
     @Query("UPDATE TestRun t SET t.status = 'FAILED_STUCK', t.finishedAt = :now WHERE t.status = 'IN_PROGRESS' AND t.heartbeatAt < :threshold")
     int failStuckRuns(@Param("threshold") OffsetDateTime threshold, @Param("now") OffsetDateTime now);
+
+    @Query("SELECT t FROM TestRun t WHERE t.suiteRun.id = :suiteRunId")
+    List<TestRun> findBySuiteRunId(@Param("suiteRunId") UUID suiteRunId);
 }

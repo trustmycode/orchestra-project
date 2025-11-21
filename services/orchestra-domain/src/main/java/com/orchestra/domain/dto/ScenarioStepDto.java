@@ -14,6 +14,7 @@ public class ScenarioStepDto {
     private String kind;
     private String channelType;
     private Map<String, Object> endpointRef;
+    private Map<String, String> exportAs;
     private Map<String, Object> action;
     private Map<String, Object> expectations;
 }

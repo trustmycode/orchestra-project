@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-060
 title: "Задача 4.6.4 (Frontend): UI для отчета по SuiteRun"
-status: backlog
+status: done
 priority: medium
 type: task
 estimate: 8h

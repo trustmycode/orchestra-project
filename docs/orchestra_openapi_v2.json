@@ -2210,7 +2210,8 @@
               "PASSED",
               "FAILED",
               "FAILED_STUCK",
-              "CANCELLED"
+              "CANCELLED",
+              "SKIPPED"
             ]
           },
           "mode": {

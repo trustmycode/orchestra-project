@@ -18,10 +18,14 @@ public class TestRunMapper {
         TestRunSummary dto = new TestRunSummary();
         dto.setId(entity.getId());
         dto.setScenarioId(entity.getScenario().getId());
+        dto.setScenarioName(entity.getScenario().getName());
         dto.setScenarioVersion(entity.getScenarioVersion());
         dto.setStatus(entity.getStatus());
         dto.setStartedAt(entity.getStartedAt());
         dto.setFinishedAt(entity.getFinishedAt());
+        if (entity.getSuiteRun() != null) {
+            dto.setSuiteRunId(entity.getSuiteRun().getId());
+        }
         if (entity.getEnvironment() != null) {
             dto.setEnvironmentId(entity.getEnvironment().getId());
             dto.setEnvironmentName(entity.getEnvironment().getName());
@@ -37,10 +41,14 @@ public class TestRunMapper {
         TestRunDetail dto = new TestRunDetail();
         dto.setId(entity.getId());
         dto.setScenarioId(entity.getScenario().getId());
+        dto.setScenarioName(entity.getScenario().getName());
         dto.setScenarioVersion(entity.getScenarioVersion());
         dto.setStatus(entity.getStatus());
         dto.setStartedAt(entity.getStartedAt());
         dto.setFinishedAt(entity.getFinishedAt());
+        if (entity.getSuiteRun() != null) {
+            dto.setSuiteRunId(entity.getSuiteRun().getId());
+        }
         if (entity.getEnvironment() != null) {
             dto.setEnvironmentId(entity.getEnvironment().getId());
             dto.setEnvironmentName(entity.getEnvironment().getName());

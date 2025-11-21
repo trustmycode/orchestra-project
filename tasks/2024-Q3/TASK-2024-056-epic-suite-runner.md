@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-056
 title: "Эпик 4.6: Реализация прогона наборов сценариев (SuiteRun)"
-status: backlog
+status: done
 priority: medium
 type: feature
 estimate: 32h
@@ -13,6 +13,7 @@ dependencies: [TASK-2024-022]
 arch_refs: [ADR-0022]
 audit_log:
   - {date: 2024-07-30, user: "@RoboticArchitect", action: "created with status backlog"}
+  - {date: 2025-11-20, user: "@RoboticAI", action: "completed all subtasks and polished UI"}
 ---
 ## Описание
 Реализовать возможность запуска, отслеживания и просмотра результатов выполнения целого `ScenarioSuite` как единой сущности (`SuiteRun`), включая поддержку зависимостей между сценариями (см. `ADR-0022`).
