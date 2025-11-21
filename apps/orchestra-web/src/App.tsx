@@ -26,6 +26,7 @@ import ScenarioSuiteDetailView from './components/ScenarioSuiteDetailView';
 import ScenarioBuilderView from './components/ScenarioBuilderView';
 import TestRunView from './components/TestRunView';
 import DataSetListView from './components/DataSetListView';
+import TestRunListView from './components/TestRunListView';
 import MainLayout from './components/layout/MainLayout';
 import { ThemeProvider } from './components/theme-provider';
 import SettingsView from './components/SettingsView';
@@ -162,6 +163,7 @@ const AppContent: React.FC = () => {
         <Route path="scenarios/:id" element={<ScenarioBuilderRoute />} />
         <Route path="datasets" element={<DataSetListView dataSets={dataSets} onDataSetsChange={fetchData} />} />
         <Route path="settings" element={<SettingsView />} />
+        <Route path="runs" element={<TestRunListView />} />
         <Route path="runs/:id" element={<TestRunRoute />} />
       </Route>
     </Routes>

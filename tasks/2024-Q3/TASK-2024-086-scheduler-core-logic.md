@@ -8,7 +8,7 @@ estimate: 12h
 created: 2024-07-30
 parents: [TASK-2024-084]
 dependencies: [TASK-2024-085]
-arch_refs: [ADR-0020]
+arch_refs: [ADR-0020, ADR-0027]
 ---
 ## Описание
 Создать основной компонент `SchedulerService`, который будет периодически выполняться и принимать решения о том, какие `TestRun`'ы отправить на выполнение, реализуя fairness-алгоритм из `ADR-0020`.

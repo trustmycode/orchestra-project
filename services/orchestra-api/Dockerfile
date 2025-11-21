@@ -7,6 +7,7 @@ COPY pom.xml ./pom.xml
 COPY orchestra-domain/pom.xml ./orchestra-domain/pom.xml
 COPY orchestra-api/pom.xml ./orchestra-api/pom.xml
 COPY orchestra-executor/pom.xml ./orchestra-executor/pom.xml
+COPY ai-service/pom.xml ./ai-service/pom.xml
 RUN mvn -B -pl orchestra-api -am dependency:go-offline
 
 # Copy source code

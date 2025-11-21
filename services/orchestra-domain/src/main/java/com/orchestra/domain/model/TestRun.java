@@ -2,6 +2,7 @@ package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "test_runs")
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class TestRun {
 
     @Id

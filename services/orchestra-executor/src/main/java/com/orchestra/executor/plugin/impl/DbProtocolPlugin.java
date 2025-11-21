@@ -5,6 +5,7 @@ import com.orchestra.domain.model.Environment;
 import com.orchestra.domain.model.ScenarioStep;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.repository.DbConnectionProfileRepository;
+import com.orchestra.domain.repository.EnvironmentRepository;
 import com.orchestra.executor.model.ExecutionContext;
 import com.orchestra.executor.plugin.ProtocolPlugin;
 import com.orchestra.executor.service.ConnectionManager;
@@ -25,6 +26,7 @@ public class DbProtocolPlugin implements ProtocolPlugin {
 
     private final ConnectionManager connectionManager;
     private final DbConnectionProfileRepository dbConnectionProfileRepository;
+    private final EnvironmentRepository environmentRepository;
 
     @Override
     public boolean supports(String channelType) {
@@ -43,10 +45,13 @@ public class DbProtocolPlugin implements ProtocolPlugin {
             throw new IllegalArgumentException("DB step requires 'dataSource' and 'sql' in action meta");
         }
 
-        Environment environment = run.getEnvironment();
-        if (environment == null) {
+        if (run.getEnvironment() == null) {
             throw new IllegalStateException("TestRun requires an Environment to execute DB steps");
         }
+
+        UUID envId = run.getEnvironment().getId();
+        Environment environment = environmentRepository.findById(envId)
+                .orElseThrow(() -> new RuntimeException("Environment not found with id: " + envId));
 
         UUID profileId = resolveProfileId(environment, dataSourceAlias);
         DbConnectionProfile profile = dbConnectionProfileRepository.findById(profileId)
@@ -153,17 +158,20 @@ public class DbProtocolPlugin implements ProtocolPlugin {
 
         if (rules.containsKey("rowCount")) {
             int expectedCount = Integer.parseInt(rules.get("rowCount").toString());
-            if (results.size() != expectedCount) return false;
+            if (results.size() != expectedCount)
+                return false;
         }
 
         if (rules.containsKey("minRowCount")) {
             int minCount = Integer.parseInt(rules.get("minRowCount").toString());
-            if (results.size() < minCount) return false;
+            if (results.size() < minCount)
+                return false;
         }
 
         if (rules.containsKey("maxRowCount")) {
             int maxCount = Integer.parseInt(rules.get("maxRowCount").toString());
-            if (results.size() > maxCount) return false;
+            if (results.size() > maxCount)
+                return false;
         }
 
         if (rules.containsKey("columns")) {

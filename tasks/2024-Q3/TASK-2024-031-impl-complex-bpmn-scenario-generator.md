@@ -9,7 +9,7 @@ created: 2024-07-29
 updated: 2024-07-30
 parents: [TASK-2024-027]
 children: [TASK-2024-042, TASK-2024-043, TASK-2024-044, TASK-2024-045, TASK-2024-046, TASK-2024-047, TASK-2024-089, TASK-2024-090, TASK-2024-091, TASK-2024-092]
-arch_refs: [ARCH-data-model]
+arch_refs: [ARCH-data-model, ADR-0010, ADR-0021]
 ---
 ## Описание
 Разработать `ProcessToScenarioGenerator`, который анализирует BPMN-процессы и генерирует минимально достаточный `ScenarioSuite` для достижения заданных критериев покрытия (Node, Edge, Decision Coverage). Генератор должен извлекать ограничения из шлюзов, передавать их генератору данных и поддерживать обработку сложных структур, таких как `Inclusive Gateway` и циклы.

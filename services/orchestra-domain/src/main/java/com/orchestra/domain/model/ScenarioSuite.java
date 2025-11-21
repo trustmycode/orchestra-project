@@ -2,6 +2,7 @@ package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "scenario_suites")
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class ScenarioSuite {
 
     @Id

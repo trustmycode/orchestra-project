@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-023
 title: "Эпик 3.2: Реализация ASSERTION-шагов для БД"
-status: backlog
+status: done
 priority: medium
 type: feature
 estimate: 16h

@@ -3,6 +3,7 @@ package com.orchestra.api.service;
 import com.orchestra.api.config.RabbitMQConfig;
 import com.orchestra.domain.dto.TestRunCreateRequest;
 import com.orchestra.domain.dto.TestRunDetail;
+import com.orchestra.domain.dto.TestRunSummary;
 import com.orchestra.api.exception.ResourceNotFoundException;
 import com.orchestra.domain.mapper.TestRunMapper;
 import com.orchestra.domain.model.Environment;
@@ -18,6 +19,7 @@ import com.orchestra.domain.repository.TestStepResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,6 +41,13 @@ public class TestRunService {
     private final EnvironmentRepository environmentRepository;
     private final TestRunMapper mapper;
     private final RabbitTemplate rabbitTemplate;
+
+    @Transactional(readOnly = true)
+    public List<TestRunSummary> findAll() {
+        return testRunRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+                .map(mapper::toSummary)
+                .collect(Collectors.toList());
+    }
 
     public TestRunDetail findRunById(UUID runId) {
         Objects.requireNonNull(runId, "runId is required");

@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-115
 title: "Задача 5.1.6 (Frontend): Реализация меню выбора типа шага и динамических форм"
-status: backlog
+status: done
 priority: high
 type: feature
 estimate: 16h

@@ -2,6 +2,7 @@ package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @Table(name = "protocol_specs", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"tenant_id", "service_name", "version"})
 })
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class ProtocolSpec {
 
     @Id

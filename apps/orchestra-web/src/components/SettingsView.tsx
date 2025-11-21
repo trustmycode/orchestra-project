@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Save, Plus, Trash2, Link as LinkIcon } from "lucide-react";
+import { Save, Plus, Trash2, Link as LinkIcon, MessageSquare, Pencil, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -15,6 +15,7 @@ import {
   Environment,
   DbConnectionProfile,
   KafkaClusterProfile,
+  DataResolver,
 } from "../types";
 import {
   getEnvironments,
@@ -27,31 +28,23 @@ import {
   getKafkaProfiles,
   createKafkaProfile,
   deleteKafkaProfile,
+  getPrompt,
+  updatePrompt,
+  getDataResolvers,
+  createDataResolver,
+  updateDataResolver,
+  deleteDataResolver,
 } from "../api";
-
-interface DataResolver {
-  id: string;
-  entity: string;
-  source: string;
-  mapping: string;
-}
 
 const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState("resolvers");
-  const [resolvers, setResolvers] = useState<DataResolver[]>([
-    {
-      id: "1",
-      entity: "User",
-      source: "users_db",
-      mapping: "SELECT * FROM users WHERE id = {{id}}",
-    },
-    {
-      id: "2",
-      entity: "Order",
-      source: "orders_db",
-      mapping: "SELECT * FROM orders WHERE order_number = {{ref}}",
-    },
-  ]);
+  const [resolvers, setResolvers] = useState<DataResolver[]>([]);
+  const [newResolver, setNewResolver] = useState<Partial<DataResolver>>({
+    entityName: "",
+    dataSource: "",
+    mapping: "",
+  });
+  const [editingResolverId, setEditingResolverId] = useState<String | null>(null);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [dbProfiles, setDbProfiles] = useState<DbConnectionProfile[]>([]);
   const [kafkaProfiles, setKafkaProfiles] = useState<KafkaClusterProfile[]>([]);
@@ -70,6 +63,16 @@ const SettingsView: React.FC = () => {
     name: "",
     bootstrapServers: "",
   });
+  const [selectedPromptKey, setSelectedPromptKey] = useState("data_generation_prompt");
+  const [promptTemplate, setPromptTemplate] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptError, setPromptError] = useState<string | null>(null);
+
+  const promptKeys = [
+    "data_planner_system_v1",
+    "analyst_system_prompt",
+    "data_generation_prompt",
+  ];
 
   const loadEnvData = useCallback(async () => {
     try {
@@ -92,30 +95,85 @@ const SettingsView: React.FC = () => {
     }
   }, [activeTab, loadEnvData]);
 
-  const handleAddResolver = () => {
-    setResolvers([
-      ...resolvers,
-      {
-        id: Date.now().toString(),
-        entity: "New Entity",
-        source: "",
-        mapping: "",
-      },
-    ]);
+  useEffect(() => {
+    if (activeTab === "resolvers") {
+      loadResolvers();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "prompts") {
+      loadPrompt(selectedPromptKey);
+    }
+  }, [activeTab, selectedPromptKey]);
+
+  const loadPrompt = async (key: string) => {
+    setPromptLoading(true);
+    setPromptError(null);
+    try {
+      const data = await getPrompt(key);
+      setPromptTemplate(data.template);
+    } catch (err) {
+      setPromptError("Failed to load prompt");
+      setPromptTemplate("");
+    } finally {
+      setPromptLoading(false);
+    }
   };
 
-  const handleUpdateResolver = (
-    id: string,
+  const loadResolvers = async () => {
+    try {
+      const data = await getDataResolvers();
+      setResolvers(data);
+    } catch (e) {
+      console.error("Failed to load resolvers", e);
+    }
+  };
+
+  const handleSaveResolver = async () => {
+    if (!newResolver.entityName || !newResolver.dataSource || !newResolver.mapping) return;
+    try {
+      if (editingResolverId) {
+        await updateDataResolver(editingResolverId as string, newResolver);
+      } else {
+        await createDataResolver(newResolver);
+      }
+      setNewResolver({ entityName: "", dataSource: "", mapping: "" });
+      setEditingResolverId(null);
+      await loadResolvers();
+    } catch (e) {
+      console.error("Failed to save resolver", e);
+    }
+  };
+
+  const handleNewResolverChange = (
     field: keyof DataResolver,
     value: string
   ) => {
-    setResolvers(
-      resolvers.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    );
+    setNewResolver({ ...newResolver, [field]: value });
   };
 
-  const handleDeleteResolver = (id: string) => {
-    setResolvers(resolvers.filter((r) => r.id !== id));
+  const handleEditResolver = (resolver: DataResolver) => {
+    setNewResolver({
+      entityName: resolver.entityName,
+      dataSource: resolver.dataSource,
+      mapping: resolver.mapping,
+    });
+    setEditingResolverId(resolver.id);
+  };
+
+  const handleCancelEdit = () => {
+    setNewResolver({ entityName: "", dataSource: "", mapping: "" });
+    setEditingResolverId(null);
+  };
+
+  const handleDeleteResolver = async (id: string) => {
+    try {
+      await deleteDataResolver(id);
+      await loadResolvers();
+    } catch (e) {
+      console.error("Failed to delete resolver", e);
+    }
   };
 
   const handleCreateEnv = async () => {
@@ -287,6 +345,18 @@ const SettingsView: React.FC = () => {
     await loadEnvData();
   };
 
+  const handleSavePrompt = async () => {
+    setPromptLoading(true);
+    setPromptError(null);
+    try {
+      await updatePrompt(selectedPromptKey, promptTemplate);
+    } catch (err) {
+      setPromptError("Failed to save prompt");
+    } finally {
+      setPromptLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -330,6 +400,17 @@ const SettingsView: React.FC = () => {
         >
           Connections
         </button>
+        <button
+          onClick={() => setActiveTab("prompts")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium transition-colors hover:text-primary border-b-2",
+            activeTab === "prompts"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
+          )}
+        >
+          Prompts
+        </button>
       </div>
 
       {activeTab === "resolvers" && (
@@ -337,18 +418,70 @@ const SettingsView: React.FC = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-1">
                   <CardTitle>Data Resolver Configuration</CardTitle>
                   <CardDescription>
                     Map business entities to data sources for AI generation.
                   </CardDescription>
+                  {editingResolverId && (
+                    <div className="flex items-center gap-2 text-sm text-violet-600">
+                      <Pencil className="h-3 w-3" /> Editing mode active
+                    </div>
+                  )}
                 </div>
-                <Button onClick={handleAddResolver} size="sm">
-                  <Plus className="mr-2 h-4 w-4" /> Add Resolver
-                </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Resolver Form */}
+              <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">
+                    {editingResolverId ? "Edit Resolver" : "Create New Resolver"}
+                  </h4>
+                  {editingResolverId && (
+                    <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-6 w-6 p-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Entity Name</label>
+                    <Input
+                      value={newResolver.entityName}
+                      onChange={(e) => handleNewResolverChange("entityName", e.target.value)}
+                      placeholder="e.g. Customer"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Data Source Alias</label>
+                    <Input
+                      value={newResolver.dataSource}
+                      onChange={(e) => handleNewResolverChange("dataSource", e.target.value)}
+                      placeholder="e.g. main_db"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Query / Mapping (SQL)</label>
+                  <textarea
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={newResolver.mapping}
+                    onChange={(e) => handleNewResolverChange("mapping", e.target.value)}
+                    placeholder="SELECT * FROM customers WHERE id = {{id}}"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  {editingResolverId && (
+                    <Button variant="secondary" onClick={handleCancelEdit}>Cancel</Button>
+                  )}
+                  <Button onClick={handleSaveResolver} disabled={!newResolver.entityName}>
+                    {editingResolverId ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                    {editingResolverId ? "Update" : "Add"}
+                  </Button>
+                </div>
+              </div>
+
               {resolvers.map((resolver) => (
                 <div
                   key={resolver.id}
@@ -357,59 +490,39 @@ const SettingsView: React.FC = () => {
                   <div className="grid flex-1 gap-4 md:grid-cols-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Entity Name</label>
-                      <Input
-                        value={resolver.entity}
-                        onChange={(e) =>
-                          handleUpdateResolver(
-                            resolver.id,
-                            "entity",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g. Customer"
-                      />
+                      <div className="text-sm">{resolver.entityName}</div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         Data Source Alias
                       </label>
-                      <Input
-                        value={resolver.source}
-                        onChange={(e) =>
-                          handleUpdateResolver(
-                            resolver.id,
-                            "source",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g. main_db"
-                      />
+                      <div className="text-sm font-mono text-muted-foreground">{resolver.dataSource}</div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         Query / Mapping
                       </label>
-                      <Input
-                        value={resolver.mapping}
-                        onChange={(e) =>
-                          handleUpdateResolver(
-                            resolver.id,
-                            "mapping",
-                            e.target.value
-                          )
-                        }
-                        placeholder="SQL or JSON Path"
-                      />
+                      <div className="text-xs font-mono bg-muted p-2 rounded">{resolver.mapping}</div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="mt-8 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteResolver(resolver.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mt-2"
+                      onClick={() => handleEditResolver(resolver)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mt-2 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteResolver(resolver.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {resolvers.length === 0 && (
@@ -418,11 +531,6 @@ const SettingsView: React.FC = () => {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="justify-end">
-              <Button>
-                <Save className="mr-2 h-4 w-4" /> Save Changes
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       )}
@@ -630,6 +738,54 @@ const SettingsView: React.FC = () => {
               </div>
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "prompts" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Prompt Management</CardTitle>
+            <CardDescription>
+              Edit system prompts to adjust AI behavior. Changes apply immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4">
+              <div className="w-1/3 space-y-2">
+                <label className="text-sm font-medium">Select Prompt</label>
+                <div className="grid gap-1">
+                  {promptKeys.map((key) => (
+                    <Button
+                      key={key}
+                      variant={selectedPromptKey === key ? "secondary" : "ghost"}
+                      className="justify-start"
+                      onClick={() => setSelectedPromptKey(key)}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      {key}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium">Template</label>
+                <textarea
+                  className="flex min-h-[300px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={promptTemplate}
+                  onChange={(e) => setPromptTemplate(e.target.value)}
+                  disabled={promptLoading}
+                />
+                {promptError && (
+                  <p className="text-sm text-destructive">{promptError}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button onClick={handleSavePrompt} disabled={promptLoading}>
+              {promptLoading ? "Saving..." : "Save Prompt"}
+            </Button>
+          </CardFooter>
         </Card>
       )}
     </div>

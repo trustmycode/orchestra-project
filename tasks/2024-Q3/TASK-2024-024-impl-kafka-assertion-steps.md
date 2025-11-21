@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-024
 title: "Задача 3.3 (Backend): Реализация ASSERTION-шагов для Kafka"
-status: backlog
+status: done
 priority: medium
 type: feature
 estimate: 8h

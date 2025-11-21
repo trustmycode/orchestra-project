@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import SuggestionCard from './ai/SuggestionCard';
 import { StepEditor } from './scenario/StepEditors';
 import { cn } from '../lib/utils';
+import { SimpleDropdown } from './ui/simple-dropdown';
+import { Plus, Globe, Database, MessageSquare, PauseCircle } from 'lucide-react';
 
 interface Props {
   scenarioId: string | null;
@@ -69,10 +71,42 @@ const ScenarioBuilderView: React.FC<Props> = ({
     setSelectedEnvId(null);
   }, [scenarioId]);
 
+  const validateForm = (): string | null => {
+    if (!scenario) return null;
+    if (!scenario.name.trim()) return 'Scenario name is required';
+
+    for (let i = 0; i < scenario.steps.length; i++) {
+      const step = scenario.steps[i];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const meta = (step.action?.meta as Record<string, any>) || {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const input = (step.action?.inputTemplate as Record<string, any>) || {};
+
+      if (step.channelType === 'HTTP_REST') {
+        if (!input.url) return `Step ${i + 1} (${step.name}): URL is required`;
+      } else if (step.channelType === 'DB') {
+        if (!meta.dataSource) return `Step ${i + 1} (${step.name}): Data Source is required`;
+        if (!meta.sql) return `Step ${i + 1} (${step.name}): SQL Query is required`;
+      } else if (step.channelType === 'KAFKA' && step.kind === 'ASSERTION') {
+        if (!meta.clusterAlias) return `Step ${i + 1} (${step.name}): Cluster Alias is required`;
+        if (!meta.topic) return `Step ${i + 1} (${step.name}): Topic is required`;
+      }
+    }
+    return null;
+  };
+
   const handleSave = async () => {
     if (!scenario) return;
     setLoading(true);
     setError(null);
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      setLoading(false);
+      return;
+    }
+
     try {
       // === FIX: Очистка временных ID перед отправкой ===
       const cleanedSteps = scenario.steps.map((step) => {
@@ -272,20 +306,37 @@ const ScenarioBuilderView: React.FC<Props> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Steps</h3>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleAddStep('HTTP')}>
-              + HTTP
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleAddStep('DB')}>
-              + DB Assert
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleAddStep('KAFKA')}>
-              + Kafka Assert
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleAddStep('BARRIER')}>
-              + Barrier
-            </Button>
-          </div>
+          <SimpleDropdown
+            label={
+              <>
+                <Plus className="mr-2 h-4 w-4" /> Add Step
+              </>
+            }
+            variant="outline"
+            size="sm"
+            items={[
+              {
+                label: 'HTTP Request',
+                icon: Globe,
+                onClick: () => handleAddStep('HTTP'),
+              },
+              {
+                label: 'DB Assertion',
+                icon: Database,
+                onClick: () => handleAddStep('DB'),
+              },
+              {
+                label: 'Kafka Assertion',
+                icon: MessageSquare,
+                onClick: () => handleAddStep('KAFKA'),
+              },
+              {
+                label: 'Barrier (Wait)',
+                icon: PauseCircle,
+                onClick: () => handleAddStep('BARRIER'),
+              },
+            ]}
+          />
         </div>
 
         {showSuggestion && (

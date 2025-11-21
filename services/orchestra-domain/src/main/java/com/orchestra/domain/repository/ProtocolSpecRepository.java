@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,4 +17,9 @@ public interface ProtocolSpecRepository extends JpaRepository<ProtocolSpec, UUID
             @Param("tenantId") UUID tenantId,
             @Param("serviceName") String serviceName,
             @Param("version") String version);
+
+    @Query("select ps from ProtocolSpec ps where ps.tenant.id = :tenantId and ps.serviceName = :serviceName order by ps.createdAt desc")
+    List<ProtocolSpec> findByTenantIdAndServiceName(
+            @Param("tenantId") UUID tenantId,
+            @Param("serviceName") String serviceName);
 }

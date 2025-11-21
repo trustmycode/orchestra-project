@@ -35,3 +35,15 @@ services:
     command: npm run start
     ports:
       - "3000:3000"
+
+  ai-service:
+    volumes:
+      - ../services/ai-service/target/classes:/app/target/classes
+    ports:
+      - "8090:8080"
+      - "5007:5005"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${APP_DB_HOST}:${APP_DB_PORT}/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005

@@ -22,6 +22,7 @@ public class TestDataSetService {
     private final TestDataSetRepository testDataSetRepository;
     private final TenantRepository tenantRepository;
     private final TestDataSetMapper mapper;
+    private final DataIndexerService dataIndexerService;
 
     private static final UUID DEFAULT_TENANT_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
@@ -49,6 +50,7 @@ public class TestDataSetService {
         dataSet.setTenant(tenant);
 
         TestDataSet saved = testDataSetRepository.save(dataSet);
+        dataIndexerService.indexAsync(saved);
         return mapper.toDetail(saved);
     }
 
@@ -59,6 +61,7 @@ public class TestDataSetService {
 
         mapper.updateEntityFromDto(dataSet, dto);
         TestDataSet updated = testDataSetRepository.save(dataSet);
+        dataIndexerService.reindexAsync(updated);
         return mapper.toDetail(updated);
     }
 
@@ -66,6 +69,7 @@ public class TestDataSetService {
         if (!testDataSetRepository.existsById(id)) {
             throw new ResourceNotFoundException("TestDataSet not found with id: " + id);
         }
+        dataIndexerService.removeAsync(id);
         testDataSetRepository.deleteById(id);
     }
 }

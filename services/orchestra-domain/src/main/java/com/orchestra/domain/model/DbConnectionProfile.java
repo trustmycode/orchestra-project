@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "db_connection_profiles")
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class DbConnectionProfile {
 
     @Id

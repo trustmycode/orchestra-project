@@ -2,6 +2,7 @@ package com.orchestra.domain.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
@@ -11,6 +12,7 @@ import java.util.UUID;
 @Table(name = "processes", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"tenant_id", "key"})
 })
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class Process {
 
     @Id
