@@ -1,13 +1,13 @@
 ---
-id: TASK-2024-135
+id: TASK-2024-134
 title: "Задача 4.10.12 (Backend): Иерархическая генерация данных для Suite (Summarize & Link)"
-status: todo
+status: done
 priority: high
 type: architecture
 estimate: 20h
 created: 2025-11-21
 parents: [TASK-2024-037]
-dependencies: [TASK-2024-134]
+dependencies: []
 arch_refs: [ADR-0019, ADR-0022]
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: TASK-2024-043
 title: "Задача 4.4.2 (Backend): Алгоритм обхода графа (Happy Path)"
-status: backlog
+status: done
 priority: high
 type: task
 estimate: 8h

@@ -1,13 +1,13 @@
 ---
 id: TASK-2024-131
 title: "Задача 4.10.9 (Backend): Асинхронный API для генерации данных (Jobs)"
-status: todo
+status: done
 priority: high
 type: feature
 estimate: 6h
 created: 2025-11-21
 parents: [TASK-2024-037]
-dependencies: [TASK-2024-137]
+dependencies: [TASK-2024-136]
 ---
 
 ## Описание
