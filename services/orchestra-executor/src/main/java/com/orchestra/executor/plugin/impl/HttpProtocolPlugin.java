@@ -3,6 +3,7 @@ package com.orchestra.executor.plugin.impl;
 import com.orchestra.domain.model.ScenarioStep;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.executor.model.ExecutionContext;
+import com.orchestra.executor.model.StepExecutionResult;
 import com.orchestra.executor.plugin.ProtocolPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
     }
 
     @Override
-    public void execute(ScenarioStep step, ExecutionContext context, TestRun run) {
+    public StepExecutionResult execute(ScenarioStep step, ExecutionContext context, TestRun run) {
         log.info("Executing HTTP step: {} (Alias: {})", step.getName(), step.getAlias());
         Map<String, Object> action = step.getAction();
         if (action == null || !action.containsKey("inputTemplate")) {
@@ -58,6 +59,12 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
         Object body = input.get("body");
         HttpEntity<Object> requestEntity = new HttpEntity<>(body, headers);
 
+        Map<String, Object> requestDetails = new HashMap<>();
+        requestDetails.put("method", method.name());
+        requestDetails.put("url", url);
+        requestDetails.put("headers", headers.toSingleValueMap());
+        requestDetails.put("body", body);
+
         try {
             ResponseEntity<Object> response = restTemplate.exchange(url, method, requestEntity, Object.class);
 
@@ -70,8 +77,13 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
             stepOutput.put("response", responseData);
 
             context.getVariables().put(step.getAlias(), stepOutput);
+            
+            Map<String, Object> structuredOutput = new HashMap<>();
+            structuredOutput.put("request", requestDetails);
+            structuredOutput.put("response", responseData);
 
             log.info("HTTP Step {} completed with status {}", step.getAlias(), response.getStatusCode());
+            return new StepExecutionResult(structuredOutput, stepOutput);
         } catch (Exception e) {
             log.error("HTTP Step {} failed", step.getAlias(), e);
             throw new RuntimeException("HTTP execution failed: " + e.getMessage(), e);

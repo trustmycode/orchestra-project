@@ -12,6 +12,9 @@ import com.orchestra.domain.repository.ProcessRepository;
 import com.orchestra.domain.repository.ProcessVersionRepository;
 import com.orchestra.domain.repository.ProtocolSpecRepository;
 import com.orchestra.domain.repository.TenantRepository;
+import com.orchestra.api.service.puml.PlantUmlParser;
+import com.orchestra.api.service.puml.PlantUmlGraphConverter;
+import com.orchestra.domain.model.graph.ControlFlowGraph;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
@@ -25,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +44,8 @@ public class ImportService {
     private final ObjectMapper objectMapper;
     private final ArtifactStorageService artifactStorageService;
     private final OpenAPIV3Parser openApiParser = new OpenAPIV3Parser();
+    private final PlantUmlParser plantUmlParser;
+    private final PlantUmlGraphConverter plantUmlGraphConverter;
 
     private static final UUID DEFAULT_TENANT_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
@@ -82,6 +88,45 @@ public class ImportService {
         } catch (IOException e) {
             throw new ImportException("Failed to read BPMN file for upload.", e);
         }
+
+        return processVersionRepository.save(processVersion);
+    }
+
+    @Transactional
+    public ProcessVersion importPuml(MultipartFile file) {
+        String content;
+        try {
+            content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new ImportException("Failed to read PlantUML file.", e);
+        }
+
+        var pumlDoc = plantUmlParser.parse(content);
+        String processKey = "puml-" + UUID.randomUUID().toString().substring(0, 8);
+        String processName = pumlDoc.title() != null ? pumlDoc.title() : "PlantUML Process";
+
+        Tenant tenant = getDefaultTenant();
+        Process process = processRepository.findByTenantIdAndKey(DEFAULT_TENANT_ID, processKey)
+                .orElseGet(() -> createProcess(processKey, tenant));
+
+        int nextVersion = processVersionRepository.findTopByProcessOrderByVersionDesc(process)
+                .map(ProcessVersion::getVersion)
+                .map(version -> version + 1)
+                .orElse(1);
+
+        ControlFlowGraph graph = plantUmlGraphConverter.convert(pumlDoc);
+
+        ProcessVersion processVersion = new ProcessVersion();
+        processVersion.setId(UUID.randomUUID());
+        processVersion.setProcess(process);
+        processVersion.setVersion(nextVersion);
+        processVersion.setName(processName);
+        processVersion.setSourceType("PLANTUML");
+        processVersion.setControlFlowGraph(objectMapper.convertValue(graph, Map.class));
+
+        String s3Key = "processes/" + processVersion.getId() + "/diagram.puml";
+        artifactStorageService.upload(s3Key, content);
+        processVersion.setSourceUri(s3Key);
 
         return processVersionRepository.save(processVersion);
     }
@@ -155,6 +200,23 @@ public class ImportService {
         ObjectNode summaryNode = objectMapper.createObjectNode();
         summaryNode.put("title", openAPI.getInfo() != null ? openAPI.getInfo().getTitle() : null);
         summaryNode.put("pathCount", openAPI.getPaths() != null ? openAPI.getPaths().size() : 0);
+        
+        java.util.List<Map<String, String>> endpoints = new ArrayList<>();
+        if (openAPI.getPaths() != null) {
+            openAPI.getPaths().forEach((path, item) -> {
+                item.readOperationsMap().forEach((method, op) -> {
+                    java.util.Map<String, String> ep = new java.util.HashMap<>();
+                    ep.put("method", method.name());
+                    ep.put("path", path);
+                    ep.put("operationId", op.getOperationId());
+                    ep.put("summary", op.getSummary());
+                    ep.put("description", op.getDescription());
+                    endpoints.add(ep);
+                });
+            });
+        }
+        summaryNode.putPOJO("endpoints", endpoints);
+        
         return objectMapper.convertValue(summaryNode, new TypeReference<Map<String, Object>>() {
         });
     }

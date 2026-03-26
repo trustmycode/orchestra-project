@@ -9,6 +9,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,6 +48,13 @@ public class TestScenario {
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    @Column(name = "score")
+    private Integer score;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata")
+    private Map<String, Object> metadata;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "depends_on")
@@ -132,6 +140,22 @@ public class TestScenario {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public Integer getScore() {
+        return score;
+    }
+
+    public void setScore(Integer score) {
+        this.score = score;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
     }
 
     public List<ScenarioDependency> getDependsOn() {

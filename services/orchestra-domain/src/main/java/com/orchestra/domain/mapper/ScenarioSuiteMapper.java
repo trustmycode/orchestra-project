@@ -29,6 +29,8 @@ public class ScenarioSuiteMapper {
             dto.setProcessVersion(entity.getProcessVersion().getVersion());
         }
         dto.setTags(entity.getTags());
+        dto.setStatus(entity.getStatus());
+        dto.setGenerationJobId(entity.getGenerationJobId());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -45,6 +47,8 @@ public class ScenarioSuiteMapper {
             dto.setProcessVersion(entity.getProcessVersion().getVersion());
         }
         dto.setTags(entity.getTags());
+        dto.setStatus(entity.getStatus());
+        dto.setGenerationJobId(entity.getGenerationJobId());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         dto.setDescription(entity.getDescription());

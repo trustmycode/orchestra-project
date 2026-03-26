@@ -7,6 +7,7 @@ import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.repository.DbConnectionProfileRepository;
 import com.orchestra.domain.repository.EnvironmentRepository;
 import com.orchestra.executor.model.ExecutionContext;
+import com.orchestra.executor.model.StepExecutionResult;
 import com.orchestra.executor.plugin.ProtocolPlugin;
 import com.orchestra.executor.service.ConnectionManager;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,7 +36,7 @@ public class DbProtocolPlugin implements ProtocolPlugin {
     }
 
     @Override
-    public void execute(ScenarioStep step, ExecutionContext context, TestRun run) {
+    public StepExecutionResult execute(ScenarioStep step, ExecutionContext context, TestRun run) {
         log.info("Executing DB step: {} (Alias: {})", step.getName(), step.getAlias());
 
         Map<String, Object> actionMeta = getActionMeta(step);
@@ -62,19 +64,30 @@ public class DbProtocolPlugin implements ProtocolPlugin {
 
         String sql = resolveTemplate(sqlTemplate, context.getVariables());
 
+        Map<String, Object> structuredOutput = new HashMap<>();
+        structuredOutput.put("request", Map.of("sql", sql, "dataSource", dataSourceAlias));
+        Map<String, Object> payload = new HashMap<>();
+
         if ("ASSERTION".equals(step.getKind())) {
-            executeAssertion(step, jdbcTemplate, sql, context);
+            List<Map<String, Object>> results = executeAssertion(step, jdbcTemplate, sql);
+            structuredOutput.put("response", results);
+            payload.put(step.getAlias() + ".result", results);
         } else {
             if (sql.trim().toUpperCase().startsWith("SELECT")) {
                 List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
-                context.getVariables().put(step.getAlias() + ".result", results);
+                payload.put(step.getAlias() + ".result", results);
+                structuredOutput.put("response", results);
                 log.info("DB Query executed. Rows: {}", results.size());
             } else {
                 int rows = jdbcTemplate.update(sql);
-                context.getVariables().put(step.getAlias() + ".rowsAffected", rows);
+                payload.put(step.getAlias() + ".rowsAffected", rows);
+                structuredOutput.put("response", Map.of("rowsAffected", rows));
                 log.info("DB Update executed. Rows affected: {}", rows);
             }
         }
+
+        context.getVariables().putAll(payload);
+        return new StepExecutionResult(structuredOutput, payload);
     }
 
     @SuppressWarnings("unchecked")
@@ -113,7 +126,7 @@ public class DbProtocolPlugin implements ProtocolPlugin {
         return result;
     }
 
-    private void executeAssertion(ScenarioStep step, JdbcTemplate jdbcTemplate, String sql, ExecutionContext context) {
+    private List<Map<String, Object>> executeAssertion(ScenarioStep step, JdbcTemplate jdbcTemplate, String sql) {
         Map<String, Object> meta = getActionMeta(step);
         long timeout = getMetaLong(meta, "timeoutMs", 5000L);
         long interval = getMetaLong(meta, "pollIntervalMs", 1000L);
@@ -125,9 +138,8 @@ public class DbProtocolPlugin implements ProtocolPlugin {
             try {
                 List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
                 if (checkExpectations(results, step.getExpectations())) {
-                    context.getVariables().put(step.getAlias() + ".result", results);
                     log.info("DB Assertion passed for step {}", step.getAlias());
-                    return;
+                    return results;
                 }
             } catch (Exception e) {
                 lastError = e;

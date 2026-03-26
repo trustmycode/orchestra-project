@@ -64,4 +64,12 @@ public class ScenarioSuiteService {
         ScenarioSuite saved = scenarioSuiteRepository.save(suite);
         return mapper.toDetail(saved);
     }
+
+    @Transactional
+    public void delete(UUID id) {
+        if (!scenarioSuiteRepository.existsById(id)) {
+            throw new ResourceNotFoundException("ScenarioSuite not found with id: " + id);
+        }
+        scenarioSuiteRepository.deleteById(id);
+    }
 }

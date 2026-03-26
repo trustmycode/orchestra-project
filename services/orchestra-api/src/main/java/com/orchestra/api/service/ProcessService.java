@@ -84,13 +84,13 @@ public class ProcessService {
 
             Collection<Participant> participants = modelInstance.getModelElementsByType(Participant.class);
             if (!participants.isEmpty()) {
-                participants.forEach(p -> result.add(new ProcessParticipant(p.getId(), p.getName())));
+                participants.forEach(p -> result.add(new ProcessParticipant(p.getId(), p.getName() != null ? p.getName() : p.getId())));
                 return result;
             }
 
             Collection<Lane> lanes = modelInstance.getModelElementsByType(Lane.class);
             if (!lanes.isEmpty()) {
-                lanes.forEach(l -> result.add(new ProcessParticipant(l.getId(), l.getName())));
+                lanes.forEach(l -> result.add(new ProcessParticipant(l.getId(), l.getName() != null ? l.getName() : l.getId())));
                 return result;
             }
 

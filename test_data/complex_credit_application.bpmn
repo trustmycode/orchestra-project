@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_01"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_01_complex_credit_application" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_01" name="Клиент заполнил анкету">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="SubProcess_Auth" name="Аутентификация партнёра">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SubProcess_Validate" name="Валидация анкеты (внутренняя)">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="Gateway_ValidationResult" name="Анкета валидна?">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="SubProcess_SubmitApplication" name="Создать заявку">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SubProcess_ExternalCheck" name="Проверить по внешним системам">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="Gateway_ExternalResult" name="Проверка пройдена?">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="SubProcess_ConfirmOffer" name="Подтвердить предложение">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="EndEvent_Success" name="Заявка подтверждена">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Rejected" name="Заявка отклонена">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_01" targetRef="SubProcess_Auth"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="SubProcess_Auth" targetRef="SubProcess_Validate"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="SubProcess_Validate" targetRef="Gateway_ValidationResult"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_ValidationResult" targetRef="SubProcess_SubmitApplication"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_ValidationResult" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="SubProcess_SubmitApplication" targetRef="SubProcess_ExternalCheck"/>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="SubProcess_ExternalCheck" targetRef="Gateway_ExternalResult"/>
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_ExternalResult" targetRef="SubProcess_ConfirmOffer"/>
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Gateway_ExternalResult" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="SubProcess_ConfirmOffer" targetRef="EndEvent_Success"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_01">
+    <bpmndi:BPMNPlane id="BPMNPlane_01" bpmnElement="Process_01_complex_credit_application">
+      <bpmndi:BPMNShape id="StartEvent_01_di" bpmnElement="StartEvent_01">
+        <dc:Bounds x="100" y="200" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_Auth_di" bpmnElement="SubProcess_Auth">
+        <dc:Bounds x="200" y="178" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_Validate_di" bpmnElement="SubProcess_Validate">
+        <dc:Bounds x="380" y="178" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ValidationResult_di" bpmnElement="Gateway_ValidationResult">
+        <dc:Bounds x="560" y="186" width="48" height="48"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_SubmitApplication_di" bpmnElement="SubProcess_SubmitApplication">
+        <dc:Bounds x="680" y="178" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_ExternalCheck_di" bpmnElement="SubProcess_ExternalCheck">
+        <dc:Bounds x="860" y="178" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ExternalResult_di" bpmnElement="Gateway_ExternalResult">
+        <dc:Bounds x="1040" y="186" width="48" height="48"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_ConfirmOffer_di" bpmnElement="SubProcess_ConfirmOffer">
+        <dc:Bounds x="1160" y="178" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1340" y="200" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Rejected_di" bpmnElement="EndEvent_Rejected">
+        <dc:Bounds x="584" y="300" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="136" y="218"/>
+        <di:waypoint x="200" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="320" y="218"/>
+        <di:waypoint x="380" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="218"/>
+        <di:waypoint x="560" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="608" y="218"/>
+        <di:waypoint x="680" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="584" y="234"/>
+        <di:waypoint x="584" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="800" y="218"/>
+        <di:waypoint x="860" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="980" y="218"/>
+        <di:waypoint x="1040" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1088" y="218"/>
+        <di:waypoint x="1160" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1064" y="234"/>
+        <di:waypoint x="1064" y="300"/>
+        <di:waypoint x="584" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1280" y="218"/>
+        <di:waypoint x="1340" y="218"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -45,12 +45,16 @@ public class TestStepResult {
     private Map<String, Object> violations;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "input_context_snapshot")
-    private Map<String, Object> inputContextSnapshot;
+    @Column(name = "resolved_input")
+    private Map<String, Object> resolvedInput;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "output_context_delta")
-    private Map<String, Object> outputContextDelta;
+    @Column(name = "structured_output")
+    private Map<String, Object> structuredOutput;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "context_delta")
+    private Map<String, Object> contextDelta;
 
     public Long getId() {
         return id;
@@ -132,19 +136,27 @@ public class TestStepResult {
         this.violations = violations;
     }
 
-    public Map<String, Object> getInputContextSnapshot() {
-        return inputContextSnapshot;
+    public Map<String, Object> getResolvedInput() {
+        return resolvedInput;
     }
 
-    public void setInputContextSnapshot(Map<String, Object> inputContextSnapshot) {
-        this.inputContextSnapshot = inputContextSnapshot;
+    public void setResolvedInput(Map<String, Object> resolvedInput) {
+        this.resolvedInput = resolvedInput;
     }
 
-    public Map<String, Object> getOutputContextDelta() {
-        return outputContextDelta;
+    public Map<String, Object> getStructuredOutput() {
+        return structuredOutput;
     }
 
-    public void setOutputContextDelta(Map<String, Object> outputContextDelta) {
-        this.outputContextDelta = outputContextDelta;
+    public void setStructuredOutput(Map<String, Object> structuredOutput) {
+        this.structuredOutput = structuredOutput;
+    }
+
+    public Map<String, Object> getContextDelta() {
+        return contextDelta;
+    }
+
+    public void setContextDelta(Map<String, Object> contextDelta) {
+        this.contextDelta = contextDelta;
     }
 }

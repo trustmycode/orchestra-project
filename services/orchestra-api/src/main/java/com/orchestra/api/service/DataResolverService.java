@@ -62,13 +62,18 @@ public class DataResolverService {
             return Map.of();
         }
 
-        if (environmentId == null) {
-            log.warn("No environmentId provided. Skipping SQL resolution.");
-            return planCriteria;
+        Environment environment = null;
+        if (environmentId != null) {
+            environment = environmentRepository.findById(environmentId).orElse(null);
+            if (environment == null) {
+                log.warn("Environment {} not found. Falling back to SYNTHETIC mode.", environmentId);
+            }
         }
 
-        Environment environment = environmentRepository.findById(environmentId)
-                .orElseThrow(() -> new RuntimeException("Environment not found: " + environmentId));
+        if (environment == null) {
+            log.info("No valid environment context. Switching to SYNTHETIC (Mock) mode.");
+            return generateSyntheticData(planCriteria);
+        }
 
         // Pre-fetch resolvers to avoid N+1 queries during recursion
         Map<String, DataResolver> resolvers = dataResolverRepository.findAllByTenantId(environment.getTenant().getId())
@@ -233,6 +238,44 @@ public class DataResolverService {
         } else {
             return rows;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> generateSyntheticData(Map<String, Object> criteria) {
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<String, Object> entry : criteria.entrySet()) {
+            result.put(entry.getKey(), generateSyntheticValue(entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object generateSyntheticValue(String key, Object value) {
+        if (value instanceof Map) {
+            return generateSyntheticData((Map<String, Object>) value);
+        }
+        if (value instanceof List) {
+            return ((List<?>) value).stream()
+                    .map(item -> generateSyntheticValue(key, item))
+                    .collect(Collectors.toList());
+        }
+
+        String k = key.toLowerCase();
+        if (k.endsWith("id")) return UUID.randomUUID().toString();
+        if (k.contains("email")) return "mock_" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
+        if (k.contains("name")) return "Mock " + capitalize(key);
+        if (k.contains("phone")) return "+15550000000";
+        if (k.contains("date") || k.contains("at")) return java.time.OffsetDateTime.now().toString();
+        if (k.contains("count") || k.contains("qty")) return 5;
+        if (k.contains("price") || k.contains("amount")) return 99.99;
+        if (k.contains("active") || k.contains("enabled")) return true;
+
+        return "mock_" + key + "_" + UUID.randomUUID().toString().substring(0, 4);
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
     // === CRUD Methods ===

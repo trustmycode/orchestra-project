@@ -2,6 +2,7 @@ package com.orchestra.api.controller;
 
 import com.orchestra.domain.dto.AiGenerateDataRequest;
 import com.orchestra.domain.dto.AiGenerateDataResponse;
+import com.orchestra.domain.dto.AiGenerateSuiteResponse;
 import com.orchestra.domain.dto.AiGenerateScenarioResponse;
 import com.orchestra.domain.dto.ReportRecommendations;
 import com.orchestra.domain.dto.ScenarioAnalysisRequest;
@@ -36,8 +37,14 @@ public class AiController {
     }
 
     @PostMapping("/data/generate-scenario/{scenarioId}")
-    public ResponseEntity<AiGenerateScenarioResponse> generateDataForScenario(@PathVariable UUID scenarioId, @RequestParam UUID environmentId) {
+    public ResponseEntity<AiGenerateScenarioResponse> generateDataForScenario(@PathVariable UUID scenarioId, @RequestParam(required = false) UUID environmentId) {
         AiGenerateScenarioResponse response = aiService.generateDataForScenario(scenarioId, environmentId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/data/generate-suite/{suiteId}")
+    public ResponseEntity<AiGenerateSuiteResponse> generateDataForSuite(@PathVariable UUID suiteId, @RequestParam(required = false) UUID environmentId) {
+        AiGenerateSuiteResponse response = aiService.generateDataForSuite(suiteId, environmentId);
         return ResponseEntity.ok(response);
     }
 

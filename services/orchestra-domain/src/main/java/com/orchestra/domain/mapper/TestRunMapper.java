@@ -70,8 +70,9 @@ public class TestRunMapper {
         dto.setStatus(entity.getStatus());
         dto.setDurationMs(entity.getDurationMs());
         dto.setPayload(entity.getPayload());
-        dto.setInputContextSnapshot(entity.getInputContextSnapshot());
-        dto.setOutputContextDelta(entity.getOutputContextDelta());
+        dto.setResolvedInput(entity.getResolvedInput());
+        dto.setStructuredOutput(entity.getStructuredOutput());
+        dto.setContextDelta(entity.getContextDelta());
         if (entity.getViolations() != null && entity.getViolations().get("violations") instanceof List) {
             dto.setViolations((List<Map<String, Object>>) entity.getViolations().get("violations"));
         }

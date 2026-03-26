@@ -1,0 +1,19 @@
+@startuml
+actor User
+participant PartnerApp
+participant AuthService
+participant PaymentService
+
+User -> PartnerApp: Нажимает «Создать двойной платеж»
+PartnerApp -> AuthService: Получить access_token\n (передается "client_id", "client_secret") POST /auth/bank-token
+AuthService --> PartnerApp: HTTP 200 ["access_token"]
+PartnerApp -> PaymentService: Создать первый платеж (передается "access_token") POST /payments
+PaymentService --> PartnerApp: HTTP 201 ["paymentId"]
+PartnerApp -> PaymentService: Получить статус первого платежа GET /payments/{payment_id}
+PaymentService --> PartnerApp: HTTP 200 ["status": "completed"]
+PartnerApp -> PaymentService: Создать второй платеж (передается "access_token" и в поле "comment" заполняется параметр "paymentId" от первого платежа) POST /payments
+PaymentService --> PartnerApp: HTTP 201 ["paymentId"]
+PartnerApp -> PaymentService: Получить статус второго платежа (передается "access_token" и "paymentId" второго платежа) GET /payments/{payment_id}
+PaymentService --> PartnerApp: HTTP 200 ["status": "completed", "description": "paymentId первого платежа"]
+PartnerApp --> User: Двойной платеж успешно выполнен.
+@enduml

@@ -1,33 +1,47 @@
 package com.orchestra.api.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orchestra.domain.context.TenantContext;
 import com.orchestra.domain.dto.AiGenerateDataRequest;
 import com.orchestra.domain.dto.AiGenerateDataResponse;
+import com.orchestra.domain.dto.AiDataTransferRequest;
+import com.orchestra.domain.dto.AiDataTransferResponse;
+import com.orchestra.domain.dto.AiMappingRequest;
+import com.orchestra.domain.dto.AiMappingResponse;
 import com.orchestra.domain.dto.ReportAnalysisRequest;
+import com.orchestra.domain.dto.AiGenerateSuiteResponse;
 import com.orchestra.domain.dto.AiGenerateScenarioResponse;
 import com.orchestra.domain.dto.ReportRecommendations;
 import com.orchestra.domain.dto.ScenarioAnalysisRequest;
 import com.orchestra.domain.dto.ScenarioAnalysisResponse;
+import com.orchestra.domain.dto.SuiteAnalysisRequest;
+import com.orchestra.domain.dto.SuiteContextPlan;
+import com.orchestra.domain.model.ScenarioSuite;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.model.TestStepResult;
 import com.orchestra.domain.model.TestScenario;
 import com.orchestra.domain.repository.ScenarioSuiteRepository;
 import com.orchestra.domain.repository.TestScenarioRepository;
+import com.orchestra.domain.repository.TestDataSetRepository;
 import com.orchestra.domain.repository.TestRunRepository;
 import com.orchestra.domain.repository.TestStepResultRepository;
 import com.orchestra.api.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -42,6 +56,12 @@ public class AiService {
     private final ScenarioSuiteRepository scenarioSuiteRepository;
     private final TestRunRepository testRunRepository;
     private final TestStepResultRepository testStepResultRepository;
+    private final TestDataSetRepository testDataSetRepository;
+    private final AiJobService aiJobService;
+    private final ObjectMapper objectMapper;
+
+    // Shared pool to limit parallelism and avoid overloading the AI service
+    private final ForkJoinPool stepGenerationPool = new ForkJoinPool(4);
 
     @Value("${orchestra.ai-service.url}")
     private String aiServiceUrl;
@@ -160,6 +180,22 @@ public class AiService {
 
     @SuppressWarnings("unchecked")
     public AiGenerateScenarioResponse generateDataForScenario(UUID scenarioId, UUID environmentId) {
+        return generateDataForScenario(scenarioId, environmentId, Map.of(), null);
+    }
+
+    @Async
+    public void generateDataForScenarioAsync(UUID scenarioId, UUID environmentId, UUID jobId, UUID dataSetId) {
+        try {
+            AiGenerateScenarioResponse response = generateDataForScenario(scenarioId, environmentId, Map.of(), jobId);
+            aiJobService.complete(jobId, response);
+            updateDataSetSuccess(dataSetId, response);
+        } catch (Exception e) {
+            aiJobService.fail(jobId, e.getMessage());
+            updateDataSetFailure(dataSetId, e.getMessage());
+        }
+    }
+
+    public AiGenerateScenarioResponse generateDataForScenario(UUID scenarioId, UUID environmentId, Map<String, Object> externalGlobalContext, UUID jobId) {
         log.info("Starting Two-Phase Data Generation for Scenario: {}", scenarioId);
 
         TestScenario scenario = testScenarioRepository.findByIdWithDetails(scenarioId)
@@ -179,12 +215,27 @@ public class AiService {
                 "Full scenario analysis for data generation",
                 stepMeta);
 
+        if (jobId != null) {
+            aiJobService.updateProgress(jobId, 10, "Analyzing scenario structure...");
+        }
+
         ScenarioAnalysisResponse analysisResp = scenarioAnalyzerService.analyze(analysisReq);
         log.info("Phase 1 Complete. Identified {} global variables.",
                 analysisResp.variables() != null ? analysisResp.variables().size() : 0);
 
         // === Phase 2: Global Resolution (Planner + Resolver) ===
         Map<String, Object> globalContext = new HashMap<>();
+        
+        // Inject external context first (Suite Level Context)
+        if (externalGlobalContext != null) {
+            globalContext.putAll(externalGlobalContext);
+        }
+
+        if (jobId != null) {
+            aiJobService.addEvent(jobId, "ANALYSIS", "Identified global variables", analysisResp.variables());
+            aiJobService.updateProgress(jobId, 30, "Resolving global context...");
+        }
+
         if (analysisResp.variables() != null && !analysisResp.variables().isEmpty()) {
             Map<String, Object> plannerReq = new HashMap<>();
             plannerReq.put("mode", "GLOBAL_CONTEXT");
@@ -192,6 +243,10 @@ public class AiService {
             plannerReq.put("requirements",
                     "Generate consistent values for these global variables based on the environment: "
                             + analysisResp.variables());
+            
+            if (!globalContext.isEmpty()) {
+                plannerReq.put("globalContext", globalContext);
+            }
 
             // Call Planner
             Map<String, Object> plannerResponse = restTemplate.postForObject(
@@ -202,19 +257,24 @@ public class AiService {
             if (plannerResponse != null && plannerResponse.containsKey("result")) {
                 Map<String, Object> planCriteria = (Map<String, Object>) plannerResponse.get("result");
                 // Call Resolver
-                globalContext = dataResolverService.resolve(planCriteria, environmentId);
+                globalContext.putAll(dataResolverService.resolve(planCriteria, environmentId));
             }
         }
         log.info("Phase 2 Complete. Global Context: {}", globalContext);
+        
+        if (jobId != null) {
+            aiJobService.addEvent(jobId, "RESOLVER", "Resolved global context", globalContext);
+            aiJobService.updateProgress(jobId, 50, "Generating data for steps...");
+        }
 
         // === Phase 3: Step Generation (Parallel Batching) ===
         Map<String, Object> stepData = new ConcurrentHashMap<>();
         final Map<String, Object> finalGlobalContext = globalContext;
 
-        // Use a custom ForkJoinPool to limit parallelism and avoid overloading the AI service
-        ForkJoinPool customThreadPool = new ForkJoinPool(4);
+        AtomicInteger stepsCompleted = new AtomicInteger(0);
+
         try {
-            customThreadPool.submit(() ->
+            stepGenerationPool.submit(() ->
                 scenario.getSteps().parallelStream()
                     .filter(s -> "ACTION".equals(s.getKind()))
                     .forEach(step -> {
@@ -227,6 +287,13 @@ public class AiService {
                         try {
                             AiGenerateDataResponse resp = generateData(req);
                             stepData.put(step.getAlias(), resp.getData());
+                            
+                            if (jobId != null) {
+                                int current = stepsCompleted.incrementAndGet();
+                                int total = scenario.getSteps().size(); // approx
+                                int progress = 50 + (int)((double)current / total * 40);
+                                aiJobService.updateProgress(jobId, progress, "Generated data for " + step.getName());
+                            }
                         } catch (Exception e) {
                             log.error("Failed to generate data for step {}", step.getAlias(), e);
                             stepData.put(step.getAlias(), Map.of("error", "Generation failed"));
@@ -236,12 +303,157 @@ public class AiService {
         } catch (Exception e) {
             log.error("Batch generation failed", e);
             throw new RuntimeException("Batch generation failed", e);
-        } finally {
-            customThreadPool.shutdown();
         }
 
         log.info("Phase 3 Complete. Generated data for {} steps.", stepData.size());
+        if (jobId != null) {
+            aiJobService.addEvent(jobId, "GENERATION", "Step data generation complete", stepData);
+        }
+
         return new AiGenerateScenarioResponse(finalGlobalContext, stepData);
+    }
+
+    public AiGenerateSuiteResponse generateDataForSuite(UUID suiteId, UUID environmentId) {
+        return generateDataForSuiteInternal(suiteId, environmentId, null, null, (progress, msg) -> {});
+    }
+
+    @Async
+    public void generateDataForSuiteAsync(UUID suiteId, UUID environmentId, String instructions, UUID jobId, UUID dataSetId) {
+        try {
+            AiGenerateSuiteResponse response = generateDataForSuiteInternal(suiteId, environmentId, instructions, jobId,
+                    (progress, msg) -> aiJobService.updateProgress(jobId, progress, msg));
+            aiJobService.complete(jobId, response);
+            updateDataSetSuccess(dataSetId, response);
+        } catch (Exception e) {
+            aiJobService.fail(jobId, e.getMessage());
+            updateDataSetFailure(dataSetId, e.getMessage());
+        }
+    }
+
+    private AiGenerateSuiteResponse generateDataForSuiteInternal(UUID suiteId, UUID environmentId, String instructions, UUID jobId, BiConsumer<Integer, String> progressCallback) {
+        log.info("Starting Hierarchical Data Generation for Suite: {}", suiteId);
+
+        ScenarioSuite suite = scenarioSuiteRepository.findById(suiteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Suite not found: " + suiteId));
+
+        List<TestScenario> scenarios = testScenarioRepository.findBySuiteIdWithSuite(suiteId);
+        if (scenarios.isEmpty()) {
+            return new AiGenerateSuiteResponse(Map.of(), Map.of());
+        }
+
+        progressCallback.accept(5, "Initializing suite analysis...");
+
+        // === Step 1: Scenario Summarization (Map) ===
+        // Analyze all scenarios in parallel to extract variables
+        AtomicInteger analyzedCount = new AtomicInteger(0);
+        List<SuiteAnalysisRequest.ScenarioSummary> summaries = scenarios.parallelStream()
+                .map(scenario -> {
+                    List<ScenarioAnalysisRequest.StepMetadata> stepMeta = scenario.getSteps().stream()
+                            .map(s -> new ScenarioAnalysisRequest.StepMetadata(
+                                    s.getAlias(), s.getName(), s.getKind(),
+                                    s.getAction() != null ? s.getAction() : Map.of()))
+                            .collect(Collectors.toList());
+
+                    ScenarioAnalysisRequest req = new ScenarioAnalysisRequest(
+                            scenario.getName(), "Analyze for suite linking", stepMeta);
+                    
+                    ScenarioAnalysisResponse resp = scenarioAnalyzerService.analyze(req);
+                    
+                    // Map response to request format
+                    List<SuiteAnalysisRequest.Variable> vars = new ArrayList<>();
+                    if (resp.variables() != null) {
+                        resp.variables().forEach(v -> vars.add(new SuiteAnalysisRequest.Variable(v.name(), v.description(), v.type())));
+                    }
+
+                    int current = analyzedCount.incrementAndGet();
+                    // Phase 1 is 5% -> 30%
+                    progressCallback.accept(5 + (int)((double)current / scenarios.size() * 25), 
+                        String.format("Analyzing scenario %d of %d...", current, scenarios.size()));
+
+                    return new SuiteAnalysisRequest.ScenarioSummary(scenario.getName(), vars);
+                })
+                .collect(Collectors.toList());
+
+        if (jobId != null) {
+            aiJobService.addEvent(jobId, "ANALYSIS", "Analyzed " + summaries.size() + " scenarios", summaries);
+        }
+
+        // === Step 2: Suite Linking (Reduce) ===
+        progressCallback.accept(30, "Linking suite context and resolving global variables...");
+        SuiteAnalysisRequest suiteRequest = new SuiteAnalysisRequest(summaries, instructions);
+        SuiteContextPlan suitePlan = restTemplate.postForObject(
+                aiServiceUrl + "/api/v1/ai/analyze-suite",
+                suiteRequest,
+                SuiteContextPlan.class);
+
+        Map<String, Object> suiteContext = new HashMap<>();
+        if (suitePlan != null && suitePlan.globalVariables() != null) {
+            log.info("Suite Linker identified {} global variables. Resolving...", suitePlan.globalVariables().size());
+            suiteContext = dataResolverService.resolve(suitePlan.globalVariables(), environmentId);
+        }
+
+        if (jobId != null) {
+            aiJobService.addEvent(jobId, "RESOLVER", "Resolved global context", suiteContext);
+        }
+
+        progressCallback.accept(40, "Starting data generation for scenarios...");
+
+        // === Step 3: Context Injection & Generation ===
+        Map<UUID, AiGenerateScenarioResponse> scenarioResults = new ConcurrentHashMap<>();
+        final Map<String, Object> finalSuiteContext = suiteContext;
+
+        AtomicInteger generatedCount = new AtomicInteger(0);
+        try {
+            stepGenerationPool.submit(() ->
+                scenarios.parallelStream().forEach(scenario -> {
+                    try {
+                        AiGenerateScenarioResponse resp = generateDataForScenario(scenario.getId(), environmentId, finalSuiteContext, jobId);
+                        scenarioResults.put(scenario.getId(), resp);
+                        if (jobId != null) {
+                            aiJobService.addEvent(jobId, "GENERATION", "Generated data for " + scenario.getName(), resp.getStepData());
+                        }
+                        int current = generatedCount.incrementAndGet();
+                        // Phase 3 is 40% -> 95%
+                        progressCallback.accept(40 + (int)((double)current / scenarios.size() * 55),
+                            String.format("Generating data for scenario %d of %d...", current, scenarios.size()));
+                    } catch (Exception e) {
+                        log.error("Failed to generate data for scenario {}", scenario.getId(), e);
+                    }
+                })
+            ).get();
+        } catch (Exception e) {
+            log.error("Suite batch generation failed", e);
+            throw new RuntimeException("Suite generation failed", e);
+        }
+
+        progressCallback.accept(100, "Generation completed.");
+        return new AiGenerateSuiteResponse(finalSuiteContext, scenarioResults);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateDataSetSuccess(UUID dataSetId, Object responseData) {
+        if (dataSetId == null) return;
+        testDataSetRepository.findById(dataSetId).ifPresent(dataSet -> {
+            dataSet.setStatus("READY");
+            try {
+                Map<String, Object> dataMap = objectMapper.convertValue(responseData, Map.class);
+                dataSet.setData(dataMap);
+            } catch (Exception e) {
+                log.error("Failed to convert AI response to map for dataset {}", dataSetId, e);
+                dataSet.setStatus("FAILED");
+                dataSet.setDescription("Failed to process generated data: " + e.getMessage());
+            }
+            testDataSetRepository.save(dataSet);
+        });
+    }
+
+    private void updateDataSetFailure(UUID dataSetId, String errorMessage) {
+        if (dataSetId == null) return;
+        testDataSetRepository.findById(dataSetId).ifPresent(dataSet -> {
+            dataSet.setStatus("FAILED");
+            dataSet.setDescription("Generation failed: " + errorMessage);
+            testDataSetRepository.save(dataSet);
+        });
     }
 
     private Map<String, Object> plannerRequestHelper(Map<String, Object> base) {
@@ -283,6 +495,22 @@ public class AiService {
                 aiServiceUrl + "/api/v1/ai/analyze-report",
                 request,
                 ReportRecommendations.class);
+    }
+
+    public AiMappingResponse mapEndpoint(AiMappingRequest request) {
+        log.debug("Requesting endpoint mapping for task: {}", request.getTaskName());
+        return restTemplate.postForObject(
+                aiServiceUrl + "/api/v1/ai/analyze-mapping",
+                request,
+                AiMappingResponse.class);
+    }
+
+    public AiDataTransferResponse suggestDataTransfer(AiDataTransferRequest request) {
+        log.debug("Requesting data transfer suggestion for target step: {}", request.getTargetStepName());
+        return restTemplate.postForObject(
+                aiServiceUrl + "/api/v1/ai/analyze-data-transfer",
+                request,
+                AiDataTransferResponse.class);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,6 +1,7 @@
 package com.orchestra.ai.service;
 
 import com.orchestra.ai.tool.DictionaryLookupTool;
+import com.orchestra.ai.tool.EndpointSearchTool;
 import com.orchestra.ai.tool.KnowledgeBaseTool;
 import com.orchestra.ai.tool.SchemaLookupTool;
 import lombok.RequiredArgsConstructor;
@@ -15,12 +16,13 @@ public class ToolRegistry {
     private final SchemaLookupTool schemaLookupTool;
     private final DictionaryLookupTool dictionaryLookupTool;
     private final KnowledgeBaseTool knowledgeBaseTool;
+    private final EndpointSearchTool endpointSearchTool;
 
     public Object[] getGlobalTools() {
         // Возвращаем бины инструментов, которые Spring AI превратит в ToolCallback
         // благодаря аннотации @Tool на их методах.
-        log.info("Registering global tools: SchemaLookupTool, DictionaryLookupTool, KnowledgeBaseTool");
-        return new Object[]{schemaLookupTool, dictionaryLookupTool, knowledgeBaseTool};
+        log.info("Registering global tools: SchemaLookupTool, DictionaryLookupTool, KnowledgeBaseTool, EndpointSearchTool");
+        return new Object[]{schemaLookupTool, dictionaryLookupTool, knowledgeBaseTool, endpointSearchTool};
     }
 }
 

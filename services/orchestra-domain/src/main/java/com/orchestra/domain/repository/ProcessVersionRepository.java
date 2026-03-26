@@ -11,4 +11,5 @@ import java.util.UUID;
 @Repository
 public interface ProcessVersionRepository extends JpaRepository<ProcessVersion, UUID> {
     Optional<ProcessVersion> findTopByProcessOrderByVersionDesc(Process process);
+    Optional<ProcessVersion> findByProcessAndVersion(Process process, Integer version);
 }

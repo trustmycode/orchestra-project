@@ -5,6 +5,7 @@ import com.orchestra.domain.model.KafkaClusterProfile;
 import com.orchestra.domain.model.ScenarioStep;
 import com.orchestra.domain.model.TestRun;
 import com.orchestra.domain.repository.KafkaClusterProfileRepository;
+import com.orchestra.executor.model.StepExecutionResult;
 import com.orchestra.executor.model.ExecutionContext;
 import com.orchestra.executor.plugin.ProtocolPlugin;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +38,7 @@ public class KafkaProtocolPlugin implements ProtocolPlugin {
     }
 
     @Override
-    public void execute(ScenarioStep step, ExecutionContext context, TestRun run) {
+    public StepExecutionResult execute(ScenarioStep step, ExecutionContext context, TestRun run) {
         log.info("Executing Kafka step: {} (alias: {})", step.getName(), step.getAlias());
 
         if (!"ASSERTION".equalsIgnoreCase(step.getKind())) {
@@ -71,6 +73,12 @@ public class KafkaProtocolPlugin implements ProtocolPlugin {
 
         // Security configuration can be extended here once profile supports it fully
 
+        Map<String, Object> requestDetails = new HashMap<>();
+        requestDetails.put("topic", topic);
+        requestDetails.put("cluster", profile.getBootstrapServers());
+        requestDetails.put("keyExpression", keyExpression);
+        requestDetails.put("valueExpression", valueExpression);
+
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
             consumer.subscribe(Collections.singletonList(topic));
 
@@ -82,11 +90,20 @@ public class KafkaProtocolPlugin implements ProtocolPlugin {
                 for (ConsumerRecord<String, String> record : records) {
                     if (matches(record, keyExpression, valueExpression)) {
                         found = true;
-                        context.getVariables().put(step.getAlias() + ".found", true);
                         context.getVariables().put(step.getAlias() + ".key", record.key());
                         context.getVariables().put(step.getAlias() + ".value", record.value());
                         log.info("Kafka assertion satisfied for step {}", step.getAlias());
-                        break;
+                        
+                        Map<String, Object> responseDetails = new HashMap<>();
+                        responseDetails.put("found", true);
+                        responseDetails.put("key", record.key());
+                        responseDetails.put("value", record.value());
+                        responseDetails.put("offset", record.offset());
+                        
+                        Map<String, Object> structuredOutput = new HashMap<>();
+                        structuredOutput.put("request", requestDetails);
+                        structuredOutput.put("response", responseDetails);
+                        return new StepExecutionResult(structuredOutput, responseDetails);
                     }
                 }
                 if (found) {
@@ -97,6 +114,7 @@ public class KafkaProtocolPlugin implements ProtocolPlugin {
             if (!found) {
                 throw new RuntimeException("Kafka assertion failed: message not found on topic " + topic + " in " + timeoutMs + " ms");
             }
+            return StepExecutionResult.empty(); // Should not reach here due to exception
         }
     }
 
