@@ -1,7 +1,7 @@
 ---
-id: TASK-2024-134
+id: TASK-2024-133
 title: "Задача 4.10.11 (Backend): Двухфазная генерация данных (Global Context Extraction)"
-status: todo
+status: done
 priority: high
 type: architecture
 estimate: 16h
