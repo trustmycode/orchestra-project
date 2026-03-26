@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_12" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.9.0">
+  <bpmn:process id="Process_12_repeat_last_payment" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_12" name="Пользователь нажимает «Создать двойной платеж»">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_Auth" name="Аутентификация (передается &#34;client_id&#34;, &#34;client_secret&#34;) [запоминается &#34;access_token&#34;]: POST&#10;/auth/bank-token">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_GetLastPaymentId" name="Создать первый платеж (передается &#34;access_token&#34;)[запоминается &#34;paymentId&#34; первого платежа]: POST&#10;/payments">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_GetLastPayment" name="Получить статус первого платежа (передается &#34;access_token&#34; и &#34;paymentId&#34; первого платежа): GET&#10;/payments/{payment_id}">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_StartPayment" name="Создать второй платеж (передается &#34;access_token&#34; и в поле &#34;comment&#34; заполняется параметр   &#34;paymentId&#34; от первого платежа)[запоминается &#34;paymentId&#34; второго платежа]: POST&#10;/payments">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_ConfirmPayment" name="Получить статус второго платежа (передается &#34;access_token&#34; и &#34;paymentId&#34; второго платежа) [ полученное поле &#34;description&#34; содержит &#34;paymentId&#34; первого платежа]: GET&#10;/payments/{payment_id}">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_Success" name="Двойной платеж успешно выполнен.">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_12" targetRef="Task_Auth" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Auth" targetRef="Task_GetLastPaymentId" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_GetLastPaymentId" targetRef="Task_GetLastPayment" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_GetLastPayment" targetRef="Task_StartPayment" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_StartPayment" targetRef="Task_ConfirmPayment" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_ConfirmPayment" targetRef="EndEvent_Success" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_12">
+    <bpmndi:BPMNPlane id="BPMNPlane_12" bpmnElement="Process_12_repeat_last_payment">
+      <bpmndi:BPMNShape id="StartEvent_12_di" bpmnElement="StartEvent_12">
+        <dc:Bounds x="180" y="150" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="154" y="186" width="89" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Auth_di" bpmnElement="Task_Auth">
+        <dc:Bounds x="280" y="138" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GetLastPaymentId_di" bpmnElement="Task_GetLastPaymentId">
+        <dc:Bounds x="430" y="138" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GetLastPayment_di" bpmnElement="Task_GetLastPayment">
+        <dc:Bounds x="580" y="138" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StartPayment_di" bpmnElement="Task_StartPayment">
+        <dc:Bounds x="730" y="138" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConfirmPayment_di" bpmnElement="Task_ConfirmPayment">
+        <dc:Bounds x="880" y="138" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1030" y="150" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1006" y="186" width="87" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="216" y="168" />
+        <di:waypoint x="280" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="380" y="168" />
+        <di:waypoint x="430" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="530" y="168" />
+        <di:waypoint x="580" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="680" y="168" />
+        <di:waypoint x="730" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="830" y="168" />
+        <di:waypoint x="880" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="980" y="168" />
+        <di:waypoint x="1030" y="168" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

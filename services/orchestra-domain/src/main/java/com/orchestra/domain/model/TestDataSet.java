@@ -46,8 +46,13 @@ public class TestDataSet {
     @Column(nullable = false)
     private String origin;
 
-    @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
+    private String status = "READY";
+
+    @Column(name = "generation_job_id")
+    private UUID generationJobId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> data;
 
     @CreationTimestamp
@@ -134,6 +139,22 @@ public class TestDataSet {
 
     public void setOrigin(String origin) {
         this.origin = origin;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public UUID getGenerationJobId() {
+        return generationJobId;
+    }
+
+    public void setGenerationJobId(UUID generationJobId) {
+        this.generationJobId = generationJobId;
     }
 
     public Map<String, Object> getData() {

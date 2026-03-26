@@ -165,6 +165,8 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_TARGET=http://orchestra-api:8085
+      - VITE_PLANTUML_SERVER=/plantuml
+      - VITE_PLANTUML_TARGET=http://plantuml:8080
     depends_on:
       - orchestra-api
     restart: unless-stopped

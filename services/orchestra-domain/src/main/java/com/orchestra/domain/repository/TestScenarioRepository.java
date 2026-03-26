@@ -33,6 +33,7 @@ public interface TestScenarioRepository extends JpaRepository<TestScenario, UUID
             "LEFT JOIN FETCH ts.suite s " +
             "LEFT JOIN FETCH s.process p " +
             "LEFT JOIN FETCH s.processVersion pv " +
+            "LEFT JOIN FETCH ts.steps " +
             "WHERE s.id = :suiteId")
     List<TestScenario> findBySuiteIdWithSuite(@Param("suiteId") UUID suiteId);
 }

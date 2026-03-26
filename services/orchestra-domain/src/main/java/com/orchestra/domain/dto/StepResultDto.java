@@ -14,6 +14,7 @@ public class StepResultDto {
     private Long durationMs;
     private Map<String, Object> payload;
     private List<Map<String, Object>> violations;
-    private Map<String, Object> inputContextSnapshot;
-    private Map<String, Object> outputContextDelta;
+    private Map<String, Object> resolvedInput;
+    private Map<String, Object> structuredOutput;
+    private Map<String, Object> contextDelta;
 }

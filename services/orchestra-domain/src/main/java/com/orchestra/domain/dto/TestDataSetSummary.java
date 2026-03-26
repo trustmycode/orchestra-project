@@ -15,6 +15,8 @@ public class TestDataSetSummary {
     private String name;
     private List<String> tags;
     private String origin;
+    private String status;
+    private UUID generationJobId;
     private OffsetDateTime createdAt;
     private String createdBy;
 }

@@ -30,6 +30,7 @@ public class TestScenarioMapper {
         dto.setVersion(entity.getVersion());
         dto.setStatus(entity.getStatus());
         dto.setTags(entity.getTags());
+        dto.setScore(entity.getScore());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -55,6 +56,8 @@ public class TestScenarioMapper {
         dto.setTags(entity.getTags());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setScore(entity.getScore());
+        dto.setMetadata(entity.getMetadata());
         dto.setSteps(entity.getSteps().stream().map(this::toDto).collect(Collectors.toList()));
         dto.setDependsOn(entity.getDependsOn());
         return dto;
@@ -68,6 +71,8 @@ public class TestScenarioMapper {
         entity.setStatus(dto.getStatus());
         entity.setTags(dto.getTags());
         entity.setDependsOn(dto.getDependsOn());
+        entity.setScore(dto.getScore());
+        entity.setMetadata(dto.getMetadata());
 
         entity.getSteps().clear();
         if (dto.getSteps() != null) {
@@ -89,6 +94,8 @@ public class TestScenarioMapper {
         entity.setStatus(dto.getStatus());
         entity.setTags(dto.getTags());
         entity.setDependsOn(dto.getDependsOn());
+        entity.setScore(dto.getScore());
+        entity.setMetadata(dto.getMetadata());
         if (dto.getSteps() != null) {
             entity.setSteps(dto.getSteps().stream().map(stepDto -> {
                 ScenarioStep step = toEntity(stepDto);

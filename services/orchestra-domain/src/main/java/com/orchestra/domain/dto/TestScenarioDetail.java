@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -21,6 +22,8 @@ public class TestScenarioDetail {
     private List<String> tags;
     private List<ScenarioStepDto> steps;
     private List<ScenarioDependency> dependsOn;
+    private Map<String, Object> metadata;
+    private Integer score;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

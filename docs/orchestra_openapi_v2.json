@@ -1162,6 +1162,86 @@
           }
         }
       }
+    },
+    "/ai/jobs/generate": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Start async data generation job",
+        "parameters": [
+          {
+            "name": "suiteId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Job accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Get job status",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiJob"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2528,6 +2608,27 @@
         "required": [
           "data"
         ]
+      },
+      "AiJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "object"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
       },
       "AiAnalyzeSpecsRequest": {
         "type": "object",

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_05"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_05_cancel_payment" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_05" name="Пользователь хочет отменить платёж">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_Auth" name="Аутентификация через OAuth2">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_GetPaymentId" name="Получить ID платежа">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_CallCancel" name="Вызвать /payments/{paymentId}">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_CancelStatus" name="Платёж отменён?">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Success" name="Платёж успешно отменён">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Failure" name="Ошибка отмены платежа">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_05" targetRef="Task_Auth"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Auth" targetRef="Task_GetPaymentId"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_GetPaymentId" targetRef="Task_CallCancel"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_CallCancel" targetRef="Gateway_CancelStatus"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_CancelStatus" targetRef="EndEvent_Success"/>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_CancelStatus" targetRef="EndEvent_Failure"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_05">
+    <bpmndi:BPMNPlane id="BPMNPlane_05" bpmnElement="Process_05_cancel_payment">
+      <bpmndi:BPMNShape id="StartEvent_05_di" bpmnElement="StartEvent_05">
+        <dc:Bounds x="100" y="200" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Auth_di" bpmnElement="Task_Auth">
+        <dc:Bounds x="200" y="188" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GetPaymentId_di" bpmnElement="Task_GetPaymentId">
+        <dc:Bounds x="350" y="188" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CallCancel_di" bpmnElement="Task_CallCancel">
+        <dc:Bounds x="500" y="188" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CancelStatus_di" bpmnElement="Gateway_CancelStatus">
+        <dc:Bounds x="650" y="196" width="48" height="48"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="750" y="150" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Failure_di" bpmnElement="EndEvent_Failure">
+        <dc:Bounds x="750" y="250" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="136" y="218"/>
+        <di:waypoint x="200" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="300" y="218"/>
+        <di:waypoint x="350" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="450" y="218"/>
+        <di:waypoint x="500" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="600" y="218"/>
+        <di:waypoint x="650" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="674" y="220"/>
+        <di:waypoint x="674" y="168"/>
+        <di:waypoint x="750" y="168"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="674" y="220"/>
+        <di:waypoint x="674" y="268"/>
+        <di:waypoint x="750" y="268"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

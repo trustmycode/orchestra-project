@@ -13,6 +13,8 @@ public class ScenarioSuiteSummary {
     private UUID processId;
     private Integer processVersion;
     private List<String> tags;
+    private String status;
+    private UUID generationJobId;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

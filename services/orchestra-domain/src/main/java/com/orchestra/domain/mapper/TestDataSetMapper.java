@@ -21,6 +21,8 @@ public class TestDataSetMapper {
         dto.setName(entity.getName());
         dto.setTags(entity.getTags());
         dto.setOrigin(entity.getOrigin());
+        dto.setStatus(entity.getStatus());
+        dto.setGenerationJobId(entity.getGenerationJobId());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setCreatedBy(entity.getCreatedBy());
         return dto;
@@ -39,6 +41,8 @@ public class TestDataSetMapper {
         dto.setName(entity.getName());
         dto.setTags(entity.getTags());
         dto.setOrigin(entity.getOrigin());
+        dto.setStatus(entity.getStatus());
+        dto.setGenerationJobId(entity.getGenerationJobId());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setDescription(entity.getDescription());

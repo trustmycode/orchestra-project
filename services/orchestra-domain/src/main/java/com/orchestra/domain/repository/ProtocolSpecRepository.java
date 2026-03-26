@@ -22,4 +22,6 @@ public interface ProtocolSpecRepository extends JpaRepository<ProtocolSpec, UUID
     List<ProtocolSpec> findByTenantIdAndServiceName(
             @Param("tenantId") UUID tenantId,
             @Param("serviceName") String serviceName);
+
+    List<ProtocolSpec> findAllByTenantId(UUID tenantId);
 }

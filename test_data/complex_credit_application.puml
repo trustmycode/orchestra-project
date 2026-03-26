@@ -1,0 +1,27 @@
+@startuml
+actor Client
+participant PartnerApp
+participant AuthService
+participant CreditAPI
+participant ExternalChecker
+
+Client -> PartnerApp: Заполняет анкету
+PartnerApp -> AuthService: Получить access_token\n(для партнёра)
+AuthService --> PartnerApp: access_token
+note over PartnerApp: Внутренняя валидация анкеты
+alt Анкета невалидна
+    PartnerApp --> Client: Показать ошибки
+else Анкета валидна
+    PartnerApp -> CreditAPI: Создать заявку\n(POST /applications)
+    CreditAPI --> PartnerApp: applicationId
+    PartnerApp -> ExternalChecker: Проверить по внешним системам\n(POST /check_leads)
+    ExternalChecker --> PartnerApp: Результат проверки (REJECTED / POSITIVE)
+    alt Проверка не пройдена
+        PartnerApp --> Client: Заявка отклонена
+    else Проверка пройдена
+        PartnerApp -> CreditAPI: Подтвердить предложение\n(PATCH /applications/{applicationId})
+        CreditAPI --> PartnerApp: 200 OK
+        PartnerApp --> Client: Заявка подтверждена
+    end
+end
+@enduml

@@ -18,6 +18,7 @@ public class TestScenarioSummary {
     private Integer version;
     private String status;
     private List<String> tags;
+    private Integer score;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

@@ -10,6 +10,7 @@ import com.orchestra.domain.repository.TestRunRepository;
 import com.orchestra.domain.repository.TestScenarioRepository;
 import com.orchestra.domain.repository.TestStepResultRepository;
 import com.orchestra.executor.model.ExecutionContext;
+import com.orchestra.executor.model.StepExecutionResult;
 import com.orchestra.executor.plugin.ProtocolPlugin;
 import com.orchestra.executor.plugin.ProtocolPluginRegistry;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class TestRunExecutorService {
 
     private final String workerId = UUID.randomUUID().toString();
     private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final int MAX_PAYLOAD_SIZE = 256 * 1024; // 256KB
 
     public void execute(UUID testRunId) {
         final UUID resolvedTestRunId = Objects.requireNonNull(testRunId, "testRunId must not be null");
@@ -171,14 +173,15 @@ public class TestRunExecutorService {
     }
 
     private void executeStep(TestRun run, ScenarioStep step, ExecutionContext context) {
-        Map<String, Object> inputSnapshot = new HashMap<>(context.getVariables());
+        Map<String, Object> resolvedInput = new HashMap<>(context.getVariables());
 
         ProtocolPlugin plugin = protocolPluginRegistry.getPlugin(step.getChannelType())
                 .orElseThrow(() -> new RuntimeException("No plugin for " + step.getChannelType()));
 
         OffsetDateTime start = OffsetDateTime.now();
+        StepExecutionResult executionResult;
         try {
-            plugin.execute(step, context, run);
+            executionResult = plugin.execute(step, context, run);
         } catch (Exception e) {
             OffsetDateTime finish = OffsetDateTime.now();
             long duration = Duration.between(start, finish).toMillis();
@@ -193,7 +196,7 @@ public class TestRunExecutorService {
                 result.setStartedAt(start);
                 result.setFinishedAt(finish);
                 result.setDurationMs(duration);
-                result.setInputContextSnapshot(inputSnapshot);
+                result.setResolvedInput(truncateIfNeeded(resolvedInput));
                 result.setViolations(Map.of("violations", List.of(Map.of("message", e.getMessage() != null ? e.getMessage() : "Unknown error"))));
                 testStepResultRepository.save(result);
             });
@@ -204,7 +207,7 @@ public class TestRunExecutorService {
 
         Map<String, Object> delta = new HashMap<>();
         context.getVariables().forEach((k, v) -> {
-            if (!Objects.equals(v, inputSnapshot.get(k))) {
+            if (!Objects.equals(v, resolvedInput.get(k))) {
                 delta.put(k, v);
             }
         });
@@ -228,8 +231,9 @@ public class TestRunExecutorService {
             result.setStartedAt(start);
             result.setFinishedAt(finish);
             result.setDurationMs(Duration.between(start, finish).toMillis());
-            result.setInputContextSnapshot(inputSnapshot);
-            result.setOutputContextDelta(delta);
+            result.setResolvedInput(truncateIfNeeded(resolvedInput));
+            result.setContextDelta(truncateIfNeeded(delta));
+            result.setStructuredOutput(truncateIfNeeded(executionResult.structuredOutput()));
             testStepResultRepository.save(result);
 
             if (!exports.isEmpty() && run.getSuiteRun() != null) {
@@ -264,5 +268,25 @@ public class TestRunExecutorService {
             }
         }
         return current;
+    }
+
+    private Map<String, Object> truncateIfNeeded(Map<String, Object> data) {
+        if (data == null) return null;
+        try {
+            String json = objectMapper.writeValueAsString(data);
+            if (json.length() > MAX_PAYLOAD_SIZE) {
+                log.warn("Payload truncated due to size limit ({} bytes)", json.length());
+                Map<String, Object> truncated = new HashMap<>();
+                truncated.put("_truncated", true);
+                truncated.put("_originalSize", json.length());
+                truncated.put("_message", "Data exceeded 256KB limit and was truncated.");
+                // Optionally keep some keys if critical, but for safety we truncate
+                return truncated;
+            }
+            return data;
+        } catch (Exception e) {
+            log.warn("Failed to check payload size", e);
+            return data;
+        }
     }
 }

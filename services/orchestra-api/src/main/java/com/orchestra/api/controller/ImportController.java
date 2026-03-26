@@ -31,6 +31,15 @@ public class ImportController {
                         "processVersionId", processVersion.getId()));
     }
 
+    @PostMapping("/processes/import/puml")
+    public ResponseEntity<Map<String, UUID>> importPumlProcess(@RequestParam("file") MultipartFile file) {
+        ProcessVersion processVersion = importService.importPuml(file);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of(
+                        "processId", processVersion.getProcess().getId(),
+                        "processVersionId", processVersion.getId()));
+    }
+
     @PostMapping("/specs/import")
     public ResponseEntity<ProtocolSpec> importSpec(@RequestParam("protocolId") String protocolId,
                                                    @RequestParam("serviceName") String serviceName,

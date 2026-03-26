@@ -37,6 +37,12 @@ public class ScenarioSuite {
     @Column(name = "tags", columnDefinition = "text[]")
     private List<String> tags;
 
+    @Column(nullable = false)
+    private String status = "DRAFT";
+
+    @Column(name = "generation_job_id")
+    private UUID generationJobId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -105,6 +111,22 @@ public class ScenarioSuite {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public UUID getGenerationJobId() {
+        return generationJobId;
+    }
+
+    public void setGenerationJobId(UUID generationJobId) {
+        this.generationJobId = generationJobId;
     }
 
     public OffsetDateTime getCreatedAt() {

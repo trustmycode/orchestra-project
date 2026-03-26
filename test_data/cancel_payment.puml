@@ -1,0 +1,18 @@
+@startuml
+actor User
+participant PartnerApp
+participant AuthService
+participant PaymentService
+
+User -> PartnerApp: Запрашивает отмену платежа
+PartnerApp -> AuthService: Получить access_token\n(grant_type=client_credentials)
+AuthService --> PartnerApp: access_token
+PartnerApp -> PartnerApp: Получает paymentId
+PartnerApp -> PaymentService: DELETE /payments/{paymentId}\n(с заголовком Authorization)
+PaymentService --> PartnerApp: 200 OK или 404/405
+alt Платёж успешно отменён
+    PartnerApp --> User: Успешно: платёж отменён
+else Ошибка отмены
+    PartnerApp --> User: Ошибка: невозможно отменить платёж
+end
+@enduml
