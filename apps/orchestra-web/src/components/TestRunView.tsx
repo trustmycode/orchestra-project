@@ -3,11 +3,12 @@ import { TestRunDetail, TestScenarioDetail, StepResult, VisualizationData, Repor
 import { getTestRun, getScenario, getProcessVisualization, analyzeReport } from '../api';
 import BpmnDiagram from './BpmnDiagram';
 import SequenceDiagramViewer from './SequenceDiagramViewer';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import StatusBadge from './StatusBadge';
-import { Sparkles, Loader2, Lightbulb, FileText, Database, GitBranch } from 'lucide-react';
+import { Sparkles, Loader2, FileText, Database, GitBranch, Clock, CheckCircle2, XCircle, AlertCircle, PlayCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import StepResultDetails from './StepResultDetails';
 
 interface Props {
   testRunId: string;
@@ -135,6 +136,23 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PASSED':
+        return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+      case 'FAILED':
+      case 'FAILED_STUCK':
+        return <XCircle className="h-5 w-5 text-rose-500" />;
+      case 'SKIPPED':
+        return <AlertCircle className="h-5 w-5 text-slate-400" />;
+      case 'RUNNING':
+      case 'IN_PROGRESS':
+        return <Loader2 className="h-5 w-5 animate-spin text-violet-500" />;
+      default:
+        return <PlayCircle className="h-5 w-5 text-slate-400" />;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack} className="mb-4">
@@ -240,34 +258,39 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
           {visualization && visualization.format === 'BPMN' && (
             <BpmnDiagram url={visualization.sourceUrl} highlightSteps={getHighlightSteps()} />
           )}
-          {visualization && visualization.format === 'SEQUENCE' && (
+          {visualization && visualization.format === 'PLANTUML' && (
             <SequenceDiagramViewer url={visualization.sourceUrl} />
           )}
         </div>
       )}
 
       <h3 className="text-xl font-semibold">Step Results</h3>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Alias</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Duration (ms)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {testRun.stepResults.map((result) => (
-              <TableRow key={result.stepId}>
-                <TableCell className="font-medium">{result.stepAlias}</TableCell>
-                <TableCell>
-                  <StatusBadge status={result.status} />
-                </TableCell>
-                <TableCell>{result.durationMs}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="rounded-md border bg-card">
+        <Accordion type="single" collapsible className="w-full">
+          {testRun.stepResults.map((result, index) => (
+            <AccordionItem key={result.stepId} value={result.stepId}>
+              <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                <div className="flex items-center gap-4 w-full">
+                  {getStatusIcon(result.status)}
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-sm">{result.stepAlias}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{result.stepId}</span>
+                  </div>
+                  <div className="ml-auto flex items-center gap-4 mr-4">
+                    <StatusBadge status={result.status} />
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground w-20 justify-end">
+                      <Clock className="h-3 w-3" />
+                      {result.durationMs}ms
+                    </div>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <StepResultDetails result={result} />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </div>
   );

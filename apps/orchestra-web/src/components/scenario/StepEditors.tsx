@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { X, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface StepEditorProps {
   step: ScenarioStep;
@@ -101,6 +102,7 @@ const AiGenButton: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const isSaved = scenarioId && stepId && !stepId.startsWith("temp-");
   const canGenerate = isSaved && environmentId;
@@ -156,7 +158,7 @@ const AiGenButton: React.FC<{
         ) : (
           <Sparkles className="mr-1 h-3 w-3" />
         )}
-        Generate with AI
+        {t('scenario.aiGenButton')}
       </Button>
     </div>
   );
@@ -170,6 +172,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   scenarioId,
   environmentId,
 }) => {
+  const { t } = useTranslation();
   const handleJsonChange = (
     field: "action" | "expectations",
     value: string
@@ -252,6 +255,7 @@ const HttpStepForm: React.FC<{
   scenarioId?: string;
   environmentId?: string;
 }> = ({ step, onChange, scenarioId, environmentId }) => {
+  const { t } = useTranslation();
   const input = (step.action?.inputTemplate as JsonRecord) || {};
   const meta = (step.action?.meta as JsonRecord) || {};
   const exportAs = (step.exportAs as Record<string, string>) || {};
@@ -280,7 +284,7 @@ const HttpStepForm: React.FC<{
     <div className="space-y-3">
       <div className="flex gap-2">
         <div className="w-1/4 space-y-1">
-          <label className="text-xs font-medium">Method</label>
+          <label className="text-xs font-medium">{t('scenario.method')}</label>
           <select
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={(input["method"] as string) || "GET"}
@@ -294,7 +298,7 @@ const HttpStepForm: React.FC<{
           </select>
         </div>
         <div className="flex-1 space-y-1">
-          <label className="text-xs font-medium">URL</label>
+          <label className="text-xs font-medium">{t('scenario.url')}</label>
           <Input
             value={(input["url"] as string) || ""}
             onChange={(e) => updateInput("url", e.target.value)}
@@ -305,7 +309,7 @@ const HttpStepForm: React.FC<{
       </div>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium">Body (JSON)</label>
+          <label className="text-xs font-medium">{t('scenario.body')}</label>
           <AiGenButton
             scenarioId={scenarioId}
             stepId={step.id}
@@ -333,7 +337,7 @@ const HttpStepForm: React.FC<{
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Timeout (ms)</label>
+          <label className="text-xs font-medium">{t('scenario.timeout')}</label>
           <Input
             type="number"
             value={
@@ -343,7 +347,7 @@ const HttpStepForm: React.FC<{
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">Mode</label>
+          <label className="text-xs font-medium">{t('scenario.mode')}</label>
           <select
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={((step.action as JsonRecord)?.["mode"] as string) || "SYNC"}
@@ -375,6 +379,7 @@ const DbAssertionForm: React.FC<{
   scenarioId?: string;
   environmentId?: string;
 }> = ({ step, onChange, envs, scenarioId, environmentId }) => {
+  const { t } = useTranslation();
   const meta = (step.action?.meta as JsonRecord) || {};
   const exportAs = (step.exportAs as Record<string, string>) || {};
   const dbAliases = Array.from(
@@ -402,7 +407,7 @@ const DbAssertionForm: React.FC<{
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium">Data Source Alias</label>
+        <label className="text-xs font-medium">{t('scenario.dataSource')}</label>
         <div className="relative">
           <Input
             list={dbAliasListId}
@@ -419,7 +424,7 @@ const DbAssertionForm: React.FC<{
       </div>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium">SQL Query</label>
+          <label className="text-xs font-medium">{t('scenario.sql')}</label>
           <AiGenButton
             scenarioId={scenarioId}
             stepId={step.id}
@@ -445,7 +450,7 @@ const DbAssertionForm: React.FC<{
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Timeout (ms)</label>
+          <label className="text-xs font-medium">{t('scenario.timeout')}</label>
           <Input
             type="number"
             value={
@@ -455,7 +460,7 @@ const DbAssertionForm: React.FC<{
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">Poll Interval (ms)</label>
+          <label className="text-xs font-medium">{t('scenario.pollInterval')}</label>
           <Input
             type="number"
             value={
@@ -480,6 +485,7 @@ const KafkaAssertionForm: React.FC<{
   onChange: (s: ScenarioStep) => void;
   envs: Environment[];
 }> = ({ step, onChange, envs }) => {
+  const { t } = useTranslation();
   const meta = (step.action?.meta as JsonRecord) || {};
   const exportAs = (step.exportAs as Record<string, string>) || {};
   const kafkaAliases = Array.from(
@@ -508,7 +514,7 @@ const KafkaAssertionForm: React.FC<{
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Cluster Alias</label>
+          <label className="text-xs font-medium">{t('scenario.clusterAlias')}</label>
           <Input
             list={kafkaAliasListId}
             value={(meta["clusterAlias"] as string) || ""}
@@ -522,7 +528,7 @@ const KafkaAssertionForm: React.FC<{
           </datalist>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">Topic</label>
+          <label className="text-xs font-medium">{t('scenario.topic')}</label>
           <Input
             value={(meta["topic"] as string) || ""}
             onChange={(e) => updateMeta("topic", e.target.value)}
@@ -530,7 +536,7 @@ const KafkaAssertionForm: React.FC<{
         </div>
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium">Key Matcher (Optional)</label>
+        <label className="text-xs font-medium">{t('scenario.keyMatcher')}</label>
         <Input
           value={(meta["keyExpression"] as string) || ""}
           onChange={(e) => updateMeta("keyExpression", e.target.value)}
@@ -539,7 +545,7 @@ const KafkaAssertionForm: React.FC<{
         <PlaceholderHint />
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium">Value Matcher (Contains)</label>
+        <label className="text-xs font-medium">{t('scenario.valueMatcher')}</label>
         <Input
           value={(meta["valueExpression"] as string) || ""}
           onChange={(e) => updateMeta("valueExpression", e.target.value)}
@@ -549,7 +555,7 @@ const KafkaAssertionForm: React.FC<{
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Timeout (ms)</label>
+          <label className="text-xs font-medium">{t('scenario.timeout')}</label>
           <Input
             type="number"
             value={
@@ -570,6 +576,7 @@ const BarrierStepForm: React.FC<{
   step: ScenarioStep;
   onChange: (s: ScenarioStep) => void;
 }> = ({ step, onChange }) => {
+  const { t } = useTranslation();
   const meta = (step.action?.meta as JsonRecord) || {};
   const trackedSteps = (meta["trackedSteps"] as string[]) || [];
   const [newStepAlias, setNewStepAlias] = useState("");
@@ -601,7 +608,7 @@ const BarrierStepForm: React.FC<{
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium">Wait for Steps (Aliases)</label>
+        <label className="text-xs font-medium">{t('scenario.waitForSteps')}</label>
         <div className="flex gap-2">
           <Input
             value={newStepAlias}

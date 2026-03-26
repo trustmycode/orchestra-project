@@ -9,12 +9,14 @@ import {
   ScenarioSuiteSummary,
   ScenarioSuiteDetail,
   ScenarioSuiteCreateRequest,
+  ScenarioSuiteGenerateRequest,
   ScenarioFromProcessRequest,
   JsonRecord,
   VisualizationData,
   AiGenerateDataRequest,
   AiGenerateDataResponse,
   AiGenerateScenarioResponse,
+  AiGenerateSuiteResponse,
   Environment,
   DbConnectionProfile,
   KafkaClusterProfile,
@@ -23,7 +25,9 @@ import {
   SuiteRunSummary,
   SuiteRunDetail,
   SuiteRunCreateRequest,
+  TestDataSetDetail,
   ReportRecommendations,
+  AiJob,
 } from './types';
 
 export const getProcesses = async (): Promise<ProcessModel[]> => {
@@ -180,6 +184,40 @@ export const generateScenarioFromProcess = async (
   return response.json();
 };
 
+export const generateScenarioSuiteFromProcess = async (
+  request: ScenarioSuiteGenerateRequest
+): Promise<ScenarioSuiteDetail> => {
+  const response = await fetch('/api/v1/scenario-suites/from-process', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate scenario suite');
+  }
+  return response.json();
+};
+
+export const generateScenarioSuiteFromProcessAsync = async (
+  request: ScenarioSuiteGenerateRequest
+): Promise<{ suiteId: string; jobId: string }> => {
+  const response = await fetch('/api/v1/scenario-suites/from-process/async', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to start suite generation');
+  }
+  return response.json();
+};
+
 export const getScenarioSuites = async (): Promise<ScenarioSuiteSummary[]> => {
   const response = await fetch('/api/v1/scenario-suites');
   if (!response.ok) {
@@ -209,6 +247,15 @@ export const createScenarioSuite = async (suite: ScenarioSuiteCreateRequest): Pr
     throw new Error(error.error || 'Failed to create scenario suite');
   }
   return response.json();
+};
+
+export const deleteScenarioSuite = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/scenario-suites/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete scenario suite');
+  }
 };
 
 export const createSuiteRun = async (request: SuiteRunCreateRequest): Promise<SuiteRunSummary> => {
@@ -359,13 +406,48 @@ export const generateDataForScenario = async (
   scenarioId: string,
   environmentId: string
 ): Promise<AiGenerateScenarioResponse> => {
-  const response = await fetch(`/api/v1/ai/data/generate-scenario/${scenarioId}?environmentId=${environmentId}`, {
+  const query = environmentId ? `?environmentId=${environmentId}` : '';
+  const response = await fetch(`/api/v1/ai/data/generate-scenario/${scenarioId}${query}`, {
     method: 'POST',
   });
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to generate scenario data');
   }
+  return response.json();
+};
+
+export const generateDataForSuite = async (
+  suiteId: string,
+  environmentId: string
+): Promise<AiGenerateSuiteResponse> => {
+  const query = environmentId ? `?environmentId=${environmentId}` : '';
+  const response = await fetch(`/api/v1/ai/data/generate-suite/${suiteId}${query}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate suite data');
+  }
+  return response.json();
+};
+
+export const startAiJob = async (environmentId: string, suiteId?: string, scenarioId?: string, instructions?: string): Promise<TestDataSetDetail> => {
+  const params = new URLSearchParams();
+  if (suiteId) params.append('suiteId', suiteId);
+  if (scenarioId) params.append('scenarioId', scenarioId);
+  if (environmentId) params.append('environmentId', environmentId);
+  if (instructions) params.append('instructions', instructions);
+  const response = await fetch(`/api/v1/ai/jobs/generate?${params.toString()}`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to start AI job');
+  return response.json();
+};
+
+export const getAiJob = async (jobId: string): Promise<AiJob> => {
+  const response = await fetch(`/api/v1/ai/jobs/${jobId}`);
+  if (!response.ok) throw new Error('Failed to get job status');
   return response.json();
 };
 

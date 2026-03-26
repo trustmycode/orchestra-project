@@ -8,5 +8,5 @@ export const encodePlantUml = (text: string): string => {
 };
 
 export const getPlantUmlServerUrl = (): string => {
-  return 'http://localhost:8095';
+  return import.meta.env.VITE_PLANTUML_SERVER || '/plantuml';
 };

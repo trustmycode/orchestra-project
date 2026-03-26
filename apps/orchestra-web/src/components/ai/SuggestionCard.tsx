@@ -2,6 +2,7 @@ import React from 'react';
 import { Sparkles, X, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface SuggestionCardProps {
   title: string;
@@ -18,6 +19,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   onDismiss,
   className,
 }) => {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -34,10 +36,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
       </div>
       <div className="mt-2 flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onDismiss} className="h-8 px-2 text-xs">
-          <X className="mr-1 h-3 w-3" /> Dismiss
+          <X className="mr-1 h-3 w-3" /> {t('common.dismiss')}
         </Button>
         <Button variant="ai" size="sm" onClick={onApply} className="h-8 px-3 text-xs">
-          <Check className="mr-1 h-3 w-3" /> Apply
+          <Check className="mr-1 h-3 w-3" /> {t('common.apply')}
         </Button>
       </div>
     </div>

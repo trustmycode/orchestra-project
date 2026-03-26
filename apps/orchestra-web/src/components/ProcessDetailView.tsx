@@ -79,7 +79,7 @@ const ProcessDetailView: React.FC<Props> = ({ process, specs, onBack }) => {
         {loading && <p className="text-sm text-muted-foreground">Loading visualization...</p>}
         {error && <p className="text-sm text-destructive">Error: {error}</p>}
         {!loading && !error && data && data.format === 'BPMN' && <BpmnDiagram url={data.sourceUrl} />}
-        {!loading && !error && data && data.format === 'SEQUENCE' && <SequenceDiagramViewer url={data.sourceUrl} />}
+        {!loading && !error && data && data.format === 'PLANTUML' && <SequenceDiagramViewer url={data.sourceUrl} />}
       </div>
 
       <AiWizard

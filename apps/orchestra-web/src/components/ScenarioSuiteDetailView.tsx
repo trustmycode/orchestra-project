@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, X, Network, Save, Plus, Trash2 } from 'lucide-react';
+import { Play, X, Network, Save, Plus, Trash2, Trophy, ArrowUpDown, Loader2 } from 'lucide-react';
 import {
   ScenarioSuiteDetail,
   Environment,
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from './ui/button';
 import StatusBadge from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
+import { Progress } from './ui/progress';
 import { cn } from '../lib/utils';
 
 interface Props {
@@ -137,6 +138,7 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
   const [selectedEnvId, setSelectedEnvId] = useState<string>('');
   const [runMode, setRunMode] = useState<'PARALLEL' | 'SEQUENTIAL'>('PARALLEL');
   const [runLoading, setRunLoading] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof TestScenarioSummary; direction: 'asc' | 'desc' } | null>({ key: 'score', direction: 'desc' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -147,6 +149,16 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load suite'))
       .finally(() => setLoading(false));
   }, [suiteId]);
+
+  // Poll for updates if generating
+  useEffect(() => {
+    if (suite?.status === 'GENERATING') {
+      const interval = setInterval(() => {
+        getScenarioSuiteDetail(suiteId).then(setSuite).catch(console.error);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [suite?.status, suiteId]);
 
   useEffect(() => {
     if (isRunModalOpen && environments.length === 0) {
@@ -189,9 +201,47 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
     }
   };
 
+  const handleSort = (key: keyof TestScenarioSummary) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedScenarios = useMemo(() => {
+    if (!suite?.scenarios) return [];
+    const sortable = [...suite.scenarios];
+    if (sortConfig !== null) {
+      sortable.sort((a, b) => {
+        const aValue = a[sortConfig.key] ?? 0;
+        const bValue = b[sortConfig.key] ?? 0;
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortable;
+  }, [suite, sortConfig]);
+
   if (loading) return <p>Loading suite details...</p>;
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
   if (!suite) return <p>Suite not found.</p>;
+
+  if (suite.status === 'GENERATING') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold tracking-tight">{suite.name}</h2>
+          <p className="text-muted-foreground">Generating scenarios from process...</p>
+        </div>
+        <div className="w-full max-w-md space-y-2">
+          <Progress value={45} className="h-2 w-full" />
+          <p className="text-xs text-center text-muted-foreground animate-pulse">AI Agents are analyzing the process graph...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -223,16 +273,30 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>
+                  <Button variant="ghost" size="sm" className="-ml-3 h-8 data-[state=open]:bg-accent" onClick={() => handleSort('score')}>
+                    Score
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {suite.scenarios.map((scenario) => (
+              {sortedScenarios.map((scenario) => (
                 <TableRow key={scenario.id}>
                   <TableCell className="font-medium">{scenario.name}</TableCell>
                   <TableCell>
                     <StatusBadge status={scenario.status} />
+                  </TableCell>
+                  <TableCell>
+                    {scenario.score !== undefined && (
+                      <div className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                        <Trophy className="h-3 w-3" />
+                        {scenario.score}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>v{scenario.version}</TableCell>
                   <TableCell className="text-right space-x-2">

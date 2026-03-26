@@ -4,7 +4,7 @@ export type JsonRecord = Record<string, JsonValue>;
 export interface ProcessModel {
   id: string;
   name: string;
-  sourceType: 'BPMN' | 'SEQUENCE';
+  sourceType: 'BPMN' | 'PLANTUML';
   createdAt: string;
 }
 
@@ -15,7 +15,7 @@ export interface ProcessParticipant {
 
 export interface VisualizationData {
   processId: string;
-  format: 'BPMN' | 'SEQUENCE';
+  format: 'BPMN' | 'PLANTUML';
   sourceUrl: string;
 }
 
@@ -38,6 +38,7 @@ export interface TestScenarioSummary {
   version: number;
   status: 'DRAFT' | 'PUBLISHED' | 'DEPRECATED';
   tags: string[];
+  score?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +49,7 @@ export interface ScenarioSuiteSummary {
   processId: string;
   processVersion?: number;
   tags?: string[];
+  status?: 'GENERATING' | 'COMPLETED' | 'FAILED' | 'DRAFT';
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +73,19 @@ export interface ScenarioFromProcessRequest {
   specBindings?: Record<string, string>; // key: participantId, value: specId
 }
 
+export interface ScenarioSuiteGenerateRequest {
+  processId: string;
+  processVersion?: number;
+  name: string;
+  generationMode: 'ALL_PATHS' | 'HAPPY_PATH_ONLY' | 'CUSTOM_SELECTION';
+  maxScenarios?: number;
+  maxLoopIterations?: number;
+  includeParallelCombinations?: boolean;
+  tags?: string[];
+  specBindings?: Record<string, string>;
+  environmentId?: string;
+}
+
 export interface AiGenerateDataRequest {
   scenarioId?: string;
   suiteId?: string;
@@ -90,6 +105,11 @@ export interface AiGenerateScenarioResponse {
   stepData: Record<string, JsonRecord>;
 }
 
+export interface AiGenerateSuiteResponse {
+  suiteContext: JsonRecord;
+  scenarioData: Record<string, AiGenerateScenarioResponse>;
+}
+
 export interface ScenarioStep {
   id?: string;
   orderIndex: number;
@@ -100,6 +120,7 @@ export interface ScenarioStep {
   endpointRef?: JsonRecord;
   action?: JsonRecord;
   expectations?: JsonRecord;
+  exportAs?: Record<string, string>;
 }
 
 export interface ScenarioDependency {
@@ -110,6 +131,8 @@ export interface ScenarioDependency {
 export interface TestScenarioDetail extends TestScenarioSummary {
   steps: ScenarioStep[];
   dependsOn?: ScenarioDependency[];
+  metadata?: Record<string, any>;
+  score?: number;
 }
 
 export interface StepResult {
@@ -118,7 +141,10 @@ export interface StepResult {
   status: 'PENDING' | 'RUNNING' | 'PASSED' | 'FAILED' | 'SKIPPED' | 'FLAKY';
   durationMs: number;
   payload?: JsonRecord;
-  violations?: JsonRecord[];
+  violations?: { type: string; message: string; details?: JsonRecord }[];
+  resolvedInput?: JsonRecord;
+  structuredOutput?: JsonRecord;
+  contextDelta?: JsonRecord;
 }
 
 export interface TestRunSummary {
@@ -147,9 +173,26 @@ export interface TestDataSet {
   name: string;
   description?: string;
   tags: string[];
-  origin: 'MANUAL' | 'AI_GENERATED' | 'IMPORTED';
+  origin: 'MANUAL' | 'AI_GENERATED' | 'IMPORTED' | 'SYNTHETIC';
+  data: JsonRecord;
+  status?: string;
+  createdAt: string;
+}
+
+export interface TestDataSetDetail {
+  id: string;
+  scope: 'GLOBAL' | 'SUITE' | 'SCENARIO';
+  suiteId?: string;
+  scenarioId?: string;
+  name: string;
+  description?: string;
+  tags: string[];
+  origin: 'MANUAL' | 'AI_GENERATED' | 'IMPORTED' | 'SYNTHETIC';
+  status?: string;
+  generationJobId?: string;
   data: JsonRecord;
   createdAt: string;
+  createdBy?: string;
 }
 
 export interface Environment {
@@ -210,4 +253,21 @@ export interface ReportRecommendations {
   scenarioImprovements: string[];
   dataImprovements: string[];
   specImprovements: string[];
+}
+
+export interface JobEvent {
+  stage: string;
+  description: string;
+  data: any;
+  timestamp: string;
+}
+
+export interface AiJob {
+  id: string;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  message?: string;
+  result?: any;
+  error?: string;
+  events?: JobEvent[];
 }

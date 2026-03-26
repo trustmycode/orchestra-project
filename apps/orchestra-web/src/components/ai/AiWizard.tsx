@@ -5,10 +5,15 @@ import {
   ProtocolSpecSummary,
   ProcessParticipant,
   ScenarioFromProcessRequest,
+  ScenarioSuiteGenerateRequest,
+  Environment,
 } from '../../types';
-import { getProcessParticipants, generateScenarioFromProcess } from '../../api';
+import { getProcessParticipants, generateScenarioFromProcess, generateScenarioSuiteFromProcessAsync, getEnvironments } from '../../api';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { Input } from '../ui/input';
+import { useJobPoller } from '../JobPollerContext';
+import { useTranslation } from 'react-i18next';
 
 interface AiWizardProps {
   isOpen: boolean;
@@ -16,14 +21,9 @@ interface AiWizardProps {
   processes: ProcessModel[];
   specs: ProtocolSpecSummary[];
   onSuccess: (scenarioId: string) => void;
+  target?: 'SCENARIO' | 'SUITE';
   initialProcessId?: string;
 }
-
-const steps = [
-  { id: 1, title: 'Source' },
-  { id: 2, title: 'Coverage' },
-  { id: 3, title: 'Mapping' },
-];
 
 const AiWizard: React.FC<AiWizardProps> = ({
   isOpen,
@@ -31,16 +31,28 @@ const AiWizard: React.FC<AiWizardProps> = ({
   processes,
   specs,
   onSuccess,
+  target = 'SCENARIO',
   initialProcessId,
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProcessId, setSelectedProcessId] = useState<string>('');
+  const [customName, setCustomName] = useState<string>('');
   const [generationMode, setGenerationMode] =
     useState<ScenarioFromProcessRequest['generationMode']>('HAPPY_PATH_ONLY');
   const [participants, setParticipants] = useState<ProcessParticipant[]>([]);
   const [specBindings, setSpecBindings] = useState<Record<string, string>>({});
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [selectedEnvId, setSelectedEnvId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { trackJob } = useJobPoller();
+  const { t } = useTranslation();
+
+  const steps = [
+    { id: 1, title: t('aiWizard.stepSource') },
+    { id: 2, title: t('aiWizard.stepCoverage') },
+    { id: 3, title: t('aiWizard.stepMapping') },
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -51,8 +63,11 @@ const AiWizard: React.FC<AiWizardProps> = ({
         setSelectedProcessId('');
         setCurrentStep(1);
       }
+      setCustomName('');
       setGenerationMode('HAPPY_PATH_ONLY');
       setParticipants([]);
+      setEnvironments([]);
+      setSelectedEnvId('');
       setSpecBindings({});
       setError(null);
     }
@@ -61,16 +76,17 @@ const AiWizard: React.FC<AiWizardProps> = ({
   useEffect(() => {
     if (currentStep === 3 && selectedProcessId) {
       setLoading(true);
-      getProcessParticipants(selectedProcessId)
-        .then((data) => {
+      Promise.all([getProcessParticipants(selectedProcessId), getEnvironments()])
+        .then(([data, envs]) => {
           setParticipants(data);
+          setEnvironments(envs);
           const bindings: Record<string, string> = {};
           data.forEach((p) => {
             const match = specs.find(
               (s) => s.serviceName.toLowerCase() === p.name.toLowerCase()
             );
             if (match) {
-              bindings[p.id] = match.id;
+              bindings[p.name] = match.id;
             }
           });
           setSpecBindings(bindings);
@@ -85,14 +101,29 @@ const AiWizard: React.FC<AiWizardProps> = ({
     setError(null);
     try {
       const process = processes.find((p) => p.id === selectedProcessId);
-      const request: ScenarioFromProcessRequest = {
-        processId: selectedProcessId,
-        name: `AI Generated: ${process?.name || 'Scenario'}`,
-        generationMode,
-        specBindings,
-      };
-      const scenario = await generateScenarioFromProcess(request);
-      onSuccess(scenario.id);
+      const baseName = customName || `${t('aiWizard.generatedPrefix')}${process?.name || (target === 'SUITE' ? 'Suite' : 'Scenario')}`;
+
+      if (target === 'SUITE') {
+        const request: ScenarioSuiteGenerateRequest = {
+          processId: selectedProcessId,
+          name: baseName,
+          generationMode,
+          specBindings, // Passed for future compatibility, even if backend might ignore it currently
+          environmentId: selectedEnvId || undefined,
+        };
+        const response = await generateScenarioSuiteFromProcessAsync(request);
+        trackJob(response.jobId, `Suite Generation: ${baseName}`);
+        onSuccess(response.suiteId);
+      } else {
+        const request: ScenarioFromProcessRequest = {
+          processId: selectedProcessId,
+          name: baseName,
+          generationMode,
+          specBindings,
+        };
+        const scenario = await generateScenarioFromProcess(request);
+        onSuccess(scenario.id);
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate scenario');
@@ -109,7 +140,7 @@ const AiWizard: React.FC<AiWizardProps> = ({
         <div className="flex items-center justify-between border-b bg-gradient-to-r from-violet-50 to-transparent p-6 dark:from-violet-950/20">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-violet-600" />
-            <h2 className="text-lg font-semibold">Generate Scenario Wizard</h2>
+            <h2 className="text-lg font-semibold">{t('aiWizard.title')}</h2>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             ✕
@@ -153,9 +184,9 @@ const AiWizard: React.FC<AiWizardProps> = ({
 
           {currentStep === 1 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Select Source Process</h3>
+              <h3 className="text-lg font-medium">{t('aiWizard.selectProcess')}</h3>
               <p className="text-sm text-muted-foreground">
-                Choose a BPMN process or Sequence diagram to generate scenarios from.
+                {t('aiWizard.selectProcessDesc')}
               </p>
               <div className="grid gap-2">
                 {processes.map((p) => (
@@ -176,12 +207,22 @@ const AiWizard: React.FC<AiWizardProps> = ({
                   </div>
                 ))}
               </div>
+              {selectedProcessId && (
+                <div className="mt-4 space-y-2">
+                  <label className="text-sm font-medium">{t('common.name')} (Optional)</label>
+                  <Input
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder={`e.g. ${target === 'SUITE' ? 'Order Processing Suite' : 'Happy Path Scenario'}`}
+                  />
+                </div>
+              )}
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Coverage Strategy</h3>
+              <h3 className="text-lg font-medium">{t('aiWizard.coverageStrategy')}</h3>
               <div className="grid gap-4">
                 <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 hover:bg-accent">
                   <input
@@ -192,9 +233,9 @@ const AiWizard: React.FC<AiWizardProps> = ({
                     onChange={() => setGenerationMode('HAPPY_PATH_ONLY')}
                   />
                   <div>
-                    <div className="font-medium">Happy Path Only</div>
+                    <div className="font-medium">{t('aiWizard.happyPath')}</div>
                     <div className="text-sm text-muted-foreground">
-                      Generates a single positive flow scenario.
+                      {t('aiWizard.happyPathDesc')}
                     </div>
                   </div>
                 </label>
@@ -207,9 +248,9 @@ const AiWizard: React.FC<AiWizardProps> = ({
                     onChange={() => setGenerationMode('ALL_PATHS')}
                   />
                   <div>
-                    <div className="font-medium">Full Coverage (All Paths)</div>
+                    <div className="font-medium">{t('aiWizard.fullCoverage')}</div>
                     <div className="text-sm text-muted-foreground">
-                      Covers all gateways, branches, and error flows.
+                      {t('aiWizard.fullCoverageDesc')}
                     </div>
                   </div>
                 </label>
@@ -219,10 +260,28 @@ const AiWizard: React.FC<AiWizardProps> = ({
 
           {currentStep === 3 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Service Mapping</h3>
+              <h3 className="text-lg font-medium">{t('aiWizard.serviceMapping')}</h3>
               <p className="text-sm text-muted-foreground">
-                Map process participants to imported OpenAPI specifications.
+                {t('aiWizard.serviceMappingDesc')}
               </p>
+
+              {target === 'SUITE' && (
+                <div className="mb-4 space-y-2 rounded-md border bg-muted/30 p-3">
+                  <label className="text-sm font-medium">{t('aiWizard.targetEnv')}</label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={selectedEnvId}
+                    onChange={(e) => setSelectedEnvId(e.target.value)}
+                  >
+                    <option value="">{t('aiWizard.selectEnv')}</option>
+                    {environments.map((env) => (
+                      <option key={env.id} value={env.id}>{env.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground">{t('aiWizard.hydrateDesc')}</p>
+                </div>
+              )}
+
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
@@ -237,9 +296,9 @@ const AiWizard: React.FC<AiWizardProps> = ({
                       <span className="font-medium">{p.name}</span>
                       <select
                         className="rounded-md border bg-background px-3 py-1 text-sm"
-                        value={specBindings[p.id] || ''}
+                        value={specBindings[p.name] || ''}
                         onChange={(e) =>
-                          setSpecBindings({ ...specBindings, [p.id]: e.target.value })
+                          setSpecBindings({ ...specBindings, [p.name]: e.target.value })
                         }
                       >
                         <option value="">-- Select Spec --</option>
@@ -253,7 +312,7 @@ const AiWizard: React.FC<AiWizardProps> = ({
                   ))}
                   {participants.length === 0 && (
                     <p className="text-sm text-muted-foreground">
-                      No participants found in this process.
+                      {t('aiWizard.noParticipants')}
                     </p>
                   )}
                 </div>
@@ -265,7 +324,7 @@ const AiWizard: React.FC<AiWizardProps> = ({
         <div className="flex items-center justify-end gap-3 border-t bg-muted/50 p-6">
           {currentStep > 1 && (
             <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)}>
-              Back
+              {t('common.back')}
             </Button>
           )}
           {currentStep < 3 ? (
@@ -273,7 +332,7 @@ const AiWizard: React.FC<AiWizardProps> = ({
               onClick={() => setCurrentStep(currentStep + 1)}
               disabled={currentStep === 1 && !selectedProcessId}
             >
-              Next <ArrowRight className="ml-2 h-4 w-4" />
+              {t('common.next')} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
             <Button variant="ai" onClick={handleGenerate} disabled={loading}>
@@ -282,7 +341,7 @@ const AiWizard: React.FC<AiWizardProps> = ({
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              Generate Scenarios
+              {t('aiWizard.generateBtn')}
             </Button>
           )}
         </div>
