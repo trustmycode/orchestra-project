@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TestDataSet, JsonRecord } from '../types';
 import { createTestDataSet, updateTestDataSet, deleteTestDataSet } from '../api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
+import StatusBadge from './StatusBadge';
 import AiDataGenerationModal from './ai/AiDataGenerationModal';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   dataSets: TestDataSet[];
@@ -26,6 +28,18 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const { t } = useTranslation();
+
+  // Polling for GENERATING status
+  useEffect(() => {
+    const hasGenerating = dataSets.some((ds) => ds.status === 'GENERATING');
+    if (!hasGenerating) return;
+
+    const interval = setInterval(() => {
+      onDataSetsChange();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [dataSets, onDataSetsChange]);
 
   const handleSave = async () => {
     if (!editingDataSet) return;
@@ -47,13 +61,22 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     }
   };
 
-  const handleAiSuccess = (data: JsonRecord, context: { scenarioId?: string; environmentId: string }) => {
+  const handleAiSuccess = (data: JsonRecord, context: { scenarioId?: string; environmentId: string; origin?: string; isAsyncJob?: boolean }) => {
     if (!editingDataSet) return;
+
+    if (context.isAsyncJob) {
+      setIsAiModalOpen(false);
+      setEditingDataSet(null); // Close editor to show list with new generating item
+      onDataSetsChange();
+      return;
+    }
+
     setEditingDataSet({
       ...editingDataSet,
       data,
       scope: context.scenarioId ? 'SCENARIO' : editingDataSet.scope,
       scenarioId: context.scenarioId || editingDataSet.scenarioId,
+      origin: (context.origin as any) || 'AI_GENERATED',
       // Reset suiteId if we are binding to a specific scenario to avoid ambiguity,
       // or keep it if the logic requires. For now, let's prioritize the scenario context.
       suiteId: context.scenarioId ? undefined : editingDataSet.suiteId,
@@ -81,11 +104,11 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     return (
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>{editingDataSet.id ? 'Edit' : 'Create'} Data Set</CardTitle>
+          <CardTitle>{editingDataSet.id ? t('common.edit') : t('common.create')} {t('lists.datasetsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid w-full items-center gap-1.5">
-            <label className="text-sm font-medium leading-none">Name</label>
+            <label className="text-sm font-medium leading-none">{t('common.name')}</label>
             <Input
               type="text"
               value={editingDataSet.name || ''}
@@ -97,7 +120,7 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium leading-none">Data (JSON)</label>
               <Button variant="ai" size="sm" onClick={() => setIsAiModalOpen(true)} disabled={loading}>
-                ✨ Generate with AI
+                ✨ {t('scenario.aiGenButton')}
               </Button>
             </div>
             <textarea
@@ -116,10 +139,10 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setEditingDataSet(null)} disabled={loading}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? 'Saving...' : 'Save'}
+            {loading ? t('common.loading') : t('common.save')}
           </Button>
         </CardFooter>
       </Card>
@@ -128,43 +151,45 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
 
   return (
     <div>
-      <h2>Test Data Sets</h2>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      <h2>{t('lists.datasetsTitle')}</h2>
+      {error && <p style={{ color: 'red' }}>{t('common.error')}: {error}</p>}
       {!editingDataSet && (
         <Button onClick={() => setEditingDataSet(emptyDataSet)} className="mb-4">
-          Create New Data Set
+          {t('lists.createDataset')}
         </Button>
       )}
 
       {renderForm()}
 
       {dataSets.length === 0 ? (
-        <p>No data sets created yet.</p>
+        <p>{t('lists.noData')}</p>
       ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Scope</TableHead>
-                <TableHead>Origin</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead>{t('lists.scope')}</TableHead>
+                <TableHead>{t('lists.origin')}</TableHead>
+                <TableHead>{t('common.createdAt')}</TableHead>
+                <TableHead className="text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {dataSets.map((dataSet) => (
                 <TableRow key={dataSet.id}>
                   <TableCell className="font-medium">{dataSet.name}</TableCell>
+                  <TableCell><StatusBadge status={dataSet.status || 'READY'} /></TableCell>
                   <TableCell>{dataSet.scope}</TableCell>
                   <TableCell>{dataSet.origin}</TableCell>
                   <TableCell>{new Date(dataSet.createdAt).toLocaleString()}</TableCell>
                   <TableCell className="space-x-2 text-right">
-                    <Button variant="outline" size="sm" onClick={() => setEditingDataSet(dataSet)} disabled={loading}>
-                      Edit
+                    <Button variant="outline" size="sm" onClick={() => setEditingDataSet(dataSet)} disabled={loading || dataSet.status === 'GENERATING'}>
+                      {t('common.edit')}
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(dataSet.id)} disabled={loading}>
-                      Delete
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(dataSet.id)} disabled={loading || dataSet.status === 'GENERATING'}>
+                      {t('common.delete')}
                     </Button>
                   </TableCell>
                 </TableRow>

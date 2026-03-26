@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from './ui/badge';
+import { Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface Props {
@@ -42,12 +43,16 @@ const StatusBadge: React.FC<Props> = ({ status, className }) => {
     case 'PUBLISHED':
       variantClass = 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400';
       break;
+    case 'GENERATING':
+      variantClass = 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+      break;
     default:
       break;
   }
 
   return (
     <Badge variant="outline" className={cn(variantClass, className)}>
+      {normalizedStatus === 'GENERATING' && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
       {normalizedStatus}
     </Badge>
   );

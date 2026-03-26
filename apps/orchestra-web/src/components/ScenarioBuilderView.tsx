@@ -9,6 +9,7 @@ import { StepEditor } from './scenario/StepEditors';
 import { cn } from '../lib/utils';
 import { SimpleDropdown } from './ui/simple-dropdown';
 import { Plus, Globe, Database, MessageSquare, PauseCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   scenarioId: string | null;
@@ -46,6 +47,7 @@ const ScenarioBuilderView: React.FC<Props> = ({
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(true);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (scenarioId) {
@@ -240,11 +242,11 @@ const ScenarioBuilderView: React.FC<Props> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">
-          {scenarioId ? `Edit Scenario: ${scenario.name} (v${scenario.version})` : 'Create New Scenario'}
+          {scenarioId ? `${t('scenario.editTitle')}: ${scenario.name} (v${scenario.version})` : t('scenario.createTitle')}
         </h2>
         <div className="space-x-2">
           <Button variant="secondary" onClick={onCancel} disabled={loading}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <select
             className={cn("h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50")}
@@ -266,27 +268,27 @@ const ScenarioBuilderView: React.FC<Props> = ({
             {isAdvancedMode ? 'Advanced Mode' : 'Simple Mode'}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? 'Saving...' : 'Save Scenario'}
+            {loading ? t('common.loading') : t('common.save')}
           </Button>
           <Button variant="default" onClick={handleRun} disabled={loading || !scenarioId}>
-            Run Scenario
+            {t('scenario.run')}
           </Button>
         </div>
       </div>
 
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      {error && <p style={{ color: 'red' }}>{t('common.error')}: {error}</p>}
 
       <Card>
         <CardHeader>
-          <CardTitle>General Info</CardTitle>
+          <CardTitle>{t('scenario.generalInfo')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <label className="text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">{t('common.name')}</label>
             <Input type="text" value={scenario.name} onChange={(e) => setScenario({ ...scenario, name: e.target.value })} />
           </div>
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <label className="text-sm font-medium">Test Data Set (optional)</label>
+            <label className="text-sm font-medium">{t('lists.datasetsTitle')} (optional)</label>
             <select
               className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50")}
               value={selectedDataSetId ?? ''}
@@ -305,11 +307,11 @@ const ScenarioBuilderView: React.FC<Props> = ({
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Steps</h3>
+          <h3 className="text-lg font-semibold">{t('scenario.steps')}</h3>
           <SimpleDropdown
             label={
               <>
-                <Plus className="mr-2 h-4 w-4" /> Add Step
+                <Plus className="mr-2 h-4 w-4" /> {t('scenario.addStep')}
               </>
             }
             variant="outline"
@@ -341,7 +343,7 @@ const ScenarioBuilderView: React.FC<Props> = ({
 
         {showSuggestion && (
           <SuggestionCard
-            title="AI Suggestion: Add DB Verification"
+            title={t('scenario.aiSuggestion')}
             description="This scenario updates the orders table. Consider adding a DB assertion to ensure data integrity."
             onApply={() => {
               handleAddStep('DB');
@@ -356,7 +358,7 @@ const ScenarioBuilderView: React.FC<Props> = ({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  Step {index + 1}: {step.name}{' '}
+                  {t('scenario.steps')} {index + 1}: {step.name}{' '}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">({step.kind})</span>
                 </CardTitle>
                 <Button
@@ -368,14 +370,14 @@ const ScenarioBuilderView: React.FC<Props> = ({
                     setScenario({ ...scenario, steps: newSteps });
                   }}
                 >
-                  Remove
+                  {t('common.delete')}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Name</label>
+                  <label className="text-xs font-medium">{t('scenario.stepName')}</label>
                   <Input
                     type="text"
                     value={step.name}
@@ -383,7 +385,7 @@ const ScenarioBuilderView: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Alias</label>
+                  <label className="text-xs font-medium">{t('scenario.stepAlias')}</label>
                   <Input
                     type="text"
                     value={step.alias}

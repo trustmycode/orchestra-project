@@ -32,6 +32,8 @@ import SuiteRunDetailView from './components/SuiteRunDetailView';
 import MainLayout from './components/layout/MainLayout';
 import { ThemeProvider } from './components/theme-provider';
 import SettingsView from './components/SettingsView';
+import { JobPollerProvider } from './components/JobPollerContext';
+import AiWizard from './components/ai/AiWizard';
 
 const AppContent: React.FC = () => {
   const [processes, setProcesses] = useState<ProcessModel[]>([]);
@@ -126,6 +128,21 @@ const AppContent: React.FC = () => {
     return <TestRunView testRunId={id!} onBack={() => navigate('/runs')} />;
   };
 
+  const AiWizardRoute: React.FC = () => {
+    return (
+      <div className="h-full w-full bg-background">
+        <AiWizard
+          isOpen={true}
+          onClose={() => navigate('/processes')}
+          processes={processes}
+          specs={specs}
+          target="SCENARIO"
+          onSuccess={(scenarioId) => navigate(`/scenarios/${scenarioId}`)}
+        />
+      </div>
+    );
+  };
+
   if (loading && processes.length === 0 && suites.length === 0 && scenarios.length === 0) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -149,7 +166,7 @@ const AppContent: React.FC = () => {
         <Route path="import" element={<ImportView onImportSuccess={fetchData} />} />
         <Route
           path="processes"
-          element={<ProcessListView processes={processes} onSelectProcess={(id) => navigate(`/processes/${id}`)} />}
+          element={<ProcessListView processes={processes} specs={specs} onSelectProcess={(id) => navigate(`/processes/${id}`)} />}
         />
         <Route path="processes/:id" element={<ProcessDetailRoute />} />
         <Route path="specs" element={<SpecListView specs={specs} />} />
@@ -171,6 +188,7 @@ const AppContent: React.FC = () => {
         <Route path="scenarios/new" element={<ScenarioBuilderRoute />} />
         <Route path="scenarios/:id" element={<ScenarioBuilderRoute />} />
         <Route path="datasets" element={<DataSetListView dataSets={dataSets} onDataSetsChange={fetchData} />} />
+        <Route path="wizard" element={<AiWizardRoute />} />
         <Route path="settings" element={<SettingsView />} />
         <Route path="runs" element={<TestRunListView />} />
         <Route path="runs/:id" element={<TestRunRoute />} />
@@ -182,7 +200,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => (
   <BrowserRouter>
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <AppContent />
+      <JobPollerProvider>
+        <AppContent />
+      </JobPollerProvider>
     </ThemeProvider>
   </BrowserRouter>
 );

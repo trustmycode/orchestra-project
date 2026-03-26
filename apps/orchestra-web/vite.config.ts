@@ -11,6 +11,12 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET || 'http://localhost:8085',
         changeOrigin: true,
       },
+      '/plantuml': {
+        target: process.env.VITE_PLANTUML_TARGET || 'http://plantuml:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/plantuml/, ''),
+      },
     },
   },
   test: {
