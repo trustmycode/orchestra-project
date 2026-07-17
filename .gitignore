@@ -19,7 +19,9 @@ Thumbs.db
 .envrc
 *.env
 !.env.example
-!infra/.env
+
+# Local archives and generated snapshots
+*.zip
 
 # Logs & runtime artifacts
 *.log

@@ -108,8 +108,7 @@ public class AiServiceTest {
         // Verify Planner was called at least 3 times (1 global + 2 steps)
         verify(restTemplate, atLeast(3)).postForObject(eq("http://ai-service/api/v1/ai/generate"), any(), eq(Map.class));
         
-        // Verify Resolver was called for global context
-        verify(dataResolverService).resolve(any(), eq(environmentId));
+        // The resolver handles the global plan and both step plans.
+        verify(dataResolverService, times(3)).resolve(any(), eq(environmentId));
     }
 }
-

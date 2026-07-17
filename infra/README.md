@@ -1,51 +1,56 @@
-# Orchestra Infrastructure
+# Локальное окружение Orchestra
 
-This directory now contains a full Docker Compose stack for Orchestra: PostgreSQL, RabbitMQ, Keycloak, the API, executor and the web UI.
+Каталог содержит Docker Compose для PostgreSQL с pgvector, RabbitMQ, MinIO, PlantUML, API, исполнителя, сервиса моделей и веб-интерфейса.
 
-## Configuration
+## Настройка
 
-All credentials and service endpoints live in `infra/.env`. The file in the repo ships with sane defaults:
-
-```bash
-cp infra/.env infra/.env.local   # optional backup before editing
-```
-
-Update the values if you need to customize database passwords or RabbitMQ credentials.
-
-## Bootstrapping the full stack
+Создайте локальный файл и заполните пустые значения случайными строками:
 
 ```bash
-cd infra
-docker compose up --build -d
+cp .env.example .env
 ```
 
-The first run builds Docker images for:
+Файл `.env` исключён из Git. Значения из истории репозитория нельзя повторно использовать.
 
-- `orchestra-api` (port `8085`)
-- `orchestra-executor`
-- `orchestra-web` (Vite dev server on `http://localhost:3000`)
+Разрешённые списки внешних адресов по умолчанию закрыты. Для конкретного показа явно заполните `ORCHESTRA_HTTP_ALLOWED_HOSTS`, `ORCHESTRA_DB_ALLOWED_HOSTS` и `ORCHESTRA_RESOLVER_DB_ALLOWED_HOSTS`. Изменения данных через JDBC включаются отдельно и для обычного показа не нужны.
 
-Subsequent runs can skip the build step:
+## Запуск
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-Stop everything with `docker compose down`.
+Доступные с узловой машины адреса:
 
-## Hot Reload workflow
+- интерфейс: `http://127.0.0.1:3000`;
+- API: `http://127.0.0.1:8085`;
+- MinIO: `http://127.0.0.1:9000`;
+- консоль MinIO: `http://127.0.0.1:9001`;
+- PlantUML: `http://127.0.0.1:8095`.
 
-`docker-compose.override.yml` is automatically picked up by Docker Compose and mounts your local sources into the containers for fast feedback.
+PostgreSQL и RabbitMQ также привязаны только к `127.0.0.1`. Сервис моделей в основном варианте не публикует порт на узловой машине.
 
-- **Backend (`orchestra-api`, `orchestra-executor`)**
-  - Make sure `mvn compile` (or your IDE) has produced `target/classes` at least once.
-  - Those directories are bind-mounted into the running containers.
-  - `spring-boot-devtools` watches the mounted classes and restarts the app automatically when they change.
-  - Debug ports are exposed on `5005` (API) and `5006` (executor).
+Остановка без удаления данных:
 
-- **Frontend (`orchestra-web`)**
-  - The entire `apps/orchestra-web` folder is mounted.
-  - `node_modules` stays inside the container via an anonymous volume, avoiding OS-specific issues.
-  - The Vite dev server (HMR) serves the UI on `http://localhost:3000` and proxies API calls to `orchestra-api`.
+```bash
+docker compose down
+```
 
-With this setup a single `docker compose up -d` starts the whole platform with hot reload enabled for day-to-day development.
+## Разработческий файл переопределения
+
+`docker-compose.override.yml` автоматически подключает собранные каталоги `target/classes` и открывает порты удалённой отладки только на `127.0.0.1`. Перед запуском соберите серверные модули:
+
+```bash
+cd ../services
+mvn -B compile
+```
+
+Не используйте разработческий вариант на удалённом общем сервере.
+
+## Проверка конфигурации
+
+После заполнения `.env` выполните:
+
+```bash
+docker compose config --quiet
+```
