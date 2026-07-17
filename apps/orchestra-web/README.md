@@ -1,23 +1,26 @@
-# orchestra-web
+# Веб-интерфейс Orchestra
 
-## Prerequisites
+## Требования
 
-- Node.js 18+ and npm
-- Running `orchestra-api` instance available on `http://localhost:8080`
+- Node.js 22;
+- npm;
+- запущенный `orchestra-api` на `http://127.0.0.1:8085`.
 
-## Local development
+## Локальная разработка
 
 ```bash
-cd apps/orchestra-web
-npm install
+npm ci
 npm start
 ```
 
-Vite dev server listens on http://localhost:3000 and proxies `/api/*` requests to the backend.
+Vite слушает только `127.0.0.1:3000` и передаёт запросы `/api/*` серверу.
 
-## Build & test
+## Проверки и сборка
 
 ```bash
-npm run build   # type-check + production build in dist/
-npm run test    # runs Vitest in jsdom environment
+npm run lint
+npm test
+npm run build
 ```
+
+Собранные статические файлы находятся в `dist`. Контейнер собирает их отдельным этапом и раздаёт через непривилегированный Nginx.

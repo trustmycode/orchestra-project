@@ -1,6 +1,7 @@
 package com.orchestra.api.service;
 
 import com.orchestra.api.exception.ResourceNotFoundException;
+import com.orchestra.api.security.DatabaseAccessPolicy;
 import com.orchestra.domain.dto.DataResolverDto;
 import com.orchestra.domain.mapper.DataResolverMapper;
 import com.orchestra.domain.model.DataResolver;
@@ -13,15 +14,15 @@ import com.orchestra.domain.repository.EnvironmentRepository;
 import com.orchestra.domain.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +30,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -42,13 +44,13 @@ public class DataResolverService {
     private final TenantRepository tenantRepository;
     private final DataResolverMapper dataResolverMapper;
     private final VectorStore vectorStore;
+    private final DatabaseAccessPolicy databaseAccessPolicy;
 
     private static final UUID DEFAULT_TENANT_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
-
-    // Simple cache for DataSources to avoid recreating them for every request.
-    // In a real production scenario, this should be managed more carefully (e.g.
-    // with eviction).
-    private final Map<UUID, DataSource> dataSourceCache = new ConcurrentHashMap<>();
+    private static final Pattern SQL_PLACEHOLDER = Pattern.compile("\\{\\{([A-Za-z][A-Za-z0-9_]*)}}", Pattern.CASE_INSENSITIVE);
+    private static final int MAX_SQL_LENGTH = 10_000;
+    private static final int MAX_ROWS = 1_000;
+    private static final int QUERY_TIMEOUT_SECONDS = 30;
 
     /**
      * Resolves a Data Plan (criteria) into concrete test data.
@@ -155,9 +157,9 @@ public class DataResolverService {
     }
 
     private Object executeSqlResolution(Map<String, Object> spec, Environment environment) {
-        String dataSourceAlias = (String) spec.get("dataSource");
-        String sql = (String) spec.get("sql");
-        String semanticCriteria = (String) spec.get("semanticCriteria");
+        String dataSourceAlias = requireString(spec, "dataSource");
+        String sql = optionalString(spec, "sql");
+        String semanticCriteria = optionalString(spec, "semanticCriteria");
 
         Map<String, Object> mappings = environment.getProfileMappings();
         if (mappings == null || !mappings.containsKey("db")) {
@@ -176,9 +178,16 @@ public class DataResolverService {
         DbConnectionProfile profile = dbProfileRepository.findById(profileId)
                 .orElseThrow(() -> new RuntimeException("DbProfile not found: " + profileId));
 
+        databaseAccessPolicy.validateJdbcUrl(profile.getJdbcUrl());
+        if (sql == null) {
+            return null;
+        }
+
+        Map<String, Object> parameters = new HashMap<>();
+
         // RAG Logic: If semantic criteria exists, search vector store for IDs
         if (semanticCriteria != null && !semanticCriteria.isBlank()) {
-            log.info("Performing semantic search for: {}", semanticCriteria);
+            log.info("Performing semantic search for tenant {}", environment.getTenant().getId());
             String tenantId = environment.getTenant().getId().toString();
             List<Document> documents = vectorStore.similaritySearch(
                     SearchRequest.builder().query(semanticCriteria).topK(5)
@@ -187,49 +196,40 @@ public class DataResolverService {
             );
 
             List<String> ids = documents.stream()
-                    .map(doc -> (String) doc.getMetadata().get("recordId"))
-                    .filter(id -> id != null && !id.equals("unknown"))
-                    .collect(Collectors.toList());
+                    .map(doc -> doc.getMetadata().get("recordId"))
+                    .filter(value -> value != null && !"unknown".equals(value.toString()))
+                    .map(Object::toString)
+                    .toList();
 
-            String idList = ids.isEmpty() ? "NULL" :
-                    ids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(", "));
-
-            if (sql != null) {
-                // Inject IDs into SQL placeholder {{ids}}
-                sql = sql.replace("{{ids}}", idList);
-            }
-        } else if (sql != null && sql.contains("{{ids}}")) {
-            // Fallback: SQL expects IDs but no semantic criteria provided to find them.
-            // Replace with NULL to avoid SQL syntax errors (resulting in empty set).
-            log.warn("SQL contains {{ids}} but no semanticCriteria provided. Replacing with NULL.");
-            sql = sql.replace("{{ids}}", "NULL");
+            parameters.put("ids", ids.isEmpty() ? List.of("__no_matching_record__") : ids);
+        } else if (sql.contains("{{ids}}")) {
+            parameters.put("ids", List.of("__no_matching_record__"));
         }
 
-        if (sql != null) {
-            for (Map.Entry<String, Object> entry : spec.entrySet()) {
-                if (entry.getValue() != null) {
-                    String placeholder = "{{" + entry.getKey() + "}}";
-                    if (sql.contains(placeholder)) {
-                        sql = sql.replace(placeholder, entry.getValue().toString());
-                    }
+        Matcher matcher = SQL_PLACEHOLDER.matcher(sql);
+        StringBuffer preparedSql = new StringBuffer();
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            if (!parameters.containsKey(name)) {
+                Object value = spec.get(name);
+                if (value == null || value instanceof Map<?, ?> || value instanceof Iterable<?> || value.getClass().isArray()) {
+                    throw new IllegalArgumentException("Missing or unsupported SQL parameter: " + name);
                 }
+                parameters.put(name, value);
             }
+            matcher.appendReplacement(preparedSql, ":" + name);
         }
+        matcher.appendTail(preparedSql);
 
-        DataSource dataSource = dataSourceCache.computeIfAbsent(profile.getId(), k -> DataSourceBuilder.create()
-                .url(profile.getJdbcUrl())
-                .username(profile.getUsername())
-                .password(profile.getPassword())
-                .build());
+        String validatedSql = validateReadOnlySql(preparedSql.toString());
+        DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                profile.getJdbcUrl(), profile.getUsername(), profile.getPassword());
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        jdbcTemplate.getJdbcTemplate().setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+        jdbcTemplate.getJdbcTemplate().setMaxRows(MAX_ROWS);
 
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-
-        if (sql == null) {
-            return null;
-        }
-
-        // If SQL implies a single row/value, we might want to simplify the result
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                validatedSql, new MapSqlParameterSource(parameters));
 
         if (rows.isEmpty()) {
             return null;
@@ -238,6 +238,39 @@ public class DataResolverService {
         } else {
             return rows;
         }
+    }
+
+    private String validateReadOnlySql(String sql) {
+        String normalized = sql == null ? "" : sql.strip();
+        if (normalized.length() > MAX_SQL_LENGTH) {
+            throw new IllegalArgumentException("SQL query is too long");
+        }
+        if (normalized.endsWith(";")) {
+            normalized = normalized.substring(0, normalized.length() - 1).stripTrailing();
+        }
+        if (normalized.contains(";") || !normalized.toLowerCase().matches("^select\\b[\\s\\S]*")) {
+            throw new IllegalArgumentException("Only a single SELECT statement is allowed");
+        }
+        return normalized;
+    }
+
+    private String requireString(Map<String, Object> source, String name) {
+        String value = optionalString(source, name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Missing required value: " + name);
+        }
+        return value;
+    }
+
+    private String optionalString(Map<String, Object> source, String name) {
+        Object value = source.get(name);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String stringValue)) {
+            throw new IllegalArgumentException("Value must be a string: " + name);
+        }
+        return stringValue;
     }
 
     @SuppressWarnings("unchecked")

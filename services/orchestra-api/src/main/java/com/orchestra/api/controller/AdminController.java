@@ -1,10 +1,9 @@
 package com.orchestra.api.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orchestra.api.service.AdminService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,76 +12,44 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "orchestra.admin", name = "enabled", havingValue = "true")
 public class AdminController {
 
     private final AdminService adminService;
-    private final ObjectMapper objectMapper;
+
+    @Value("${orchestra.admin.token:}")
+    private String configuredAdminToken;
 
     @GetMapping("/tenants")
-    public ResponseEntity<List<Map<String, Object>>> getAllTenants(@RequestHeader("Authorization") String authHeader) {
-        validateSuperAdmin(authHeader);
-        String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(adminService.getAllTenants(userId));
+    public ResponseEntity<List<Map<String, Object>>> getAllTenants(
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminToken) {
+        validateAdminToken(adminToken);
+        return ResponseEntity.ok(adminService.getAllTenants("configured-admin"));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getSystemStats(@RequestHeader("Authorization") String authHeader) {
-        validateSuperAdmin(authHeader);
-        String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(adminService.getSystemStats(userId));
+    public ResponseEntity<Map<String, Object>> getSystemStats(
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminToken) {
+        validateAdminToken(adminToken);
+        return ResponseEntity.ok(adminService.getSystemStats("configured-admin"));
     }
 
-    private void validateSuperAdmin(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
+    private void validateAdminToken(String suppliedToken) {
+        if (configuredAdminToken == null || configuredAdminToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Admin API is not configured");
         }
-        try {
-            String token = authHeader.substring(7);
-            String[] parts = token.split("\\.");
-            if (parts.length < 2) {
-                throw new IllegalArgumentException("Invalid JWT format");
-            }
-            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-            JsonNode node = objectMapper.readTree(payload);
-            
-            // Проверка ролей (realm_access.roles или resource_access)
-            boolean isSuperAdmin = false;
-            if (node.has("realm_access") && node.get("realm_access").has("roles")) {
-                for (JsonNode role : node.get("realm_access").get("roles")) {
-                    if ("SUPER_ADMIN".equals(role.asText())) {
-                        isSuperAdmin = true;
-                        break;
-                    }
-                }
-            }
-            
-            if (!isSuperAdmin) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: SUPER_ADMIN role required");
-            }
-        } catch (ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Token validation failed", e);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
-        }
-    }
-
-    private String extractUserId(String authHeader) {
-        try {
-            String token = authHeader.substring(7);
-            String payload = new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]));
-            return objectMapper.readTree(payload).path("sub").asText("unknown");
-        } catch (Exception e) {
-            return "unknown";
+        if (suppliedToken == null || !MessageDigest.isEqual(
+                configuredAdminToken.getBytes(StandardCharsets.UTF_8),
+                suppliedToken.getBytes(StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid admin token");
         }
     }
 }
-

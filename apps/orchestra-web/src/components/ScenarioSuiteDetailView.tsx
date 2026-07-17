@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, X, Network, Save, Plus, Trash2, Trophy, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Play, X, Network, Save, Plus, Trash2, Trophy, ArrowUpDown } from 'lucide-react';
 import {
   ScenarioSuiteDetail,
   Environment,
@@ -41,7 +41,7 @@ const DependencyEditor: React.FC<{
     setDependencies(dependencies.filter((_, i) => i !== index));
   };
 
-  const updateDep = (index: number, field: keyof ScenarioDependency, value: any) => {
+  const updateDep = <K extends keyof ScenarioDependency,>(index: number, field: K, value: ScenarioDependency[K]) => {
     const newDeps = [...dependencies];
     newDeps[index] = { ...newDeps[index], [field]: value };
     setDependencies(newDeps);
@@ -187,7 +187,7 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
     try {
       const detail = await getScenario(scenarioId);
       setEditingDepsScenario(detail);
-    } catch (e) {
+    } catch {
       alert('Failed to load scenario details');
     }
   };
@@ -196,7 +196,7 @@ const ScenarioSuiteDetailView: React.FC<Props> = ({
     try {
       await updateScenario(updated.id, updated);
       setEditingDepsScenario(null);
-    } catch (e) {
+    } catch {
       alert('Failed to save dependencies');
     }
   };

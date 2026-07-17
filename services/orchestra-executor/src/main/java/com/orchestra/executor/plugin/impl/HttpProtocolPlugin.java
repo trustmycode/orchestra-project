@@ -5,6 +5,7 @@ import com.orchestra.domain.model.TestRun;
 import com.orchestra.executor.model.ExecutionContext;
 import com.orchestra.executor.model.StepExecutionResult;
 import com.orchestra.executor.plugin.ProtocolPlugin;
+import com.orchestra.executor.security.OutboundUrlPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class HttpProtocolPlugin implements ProtocolPlugin {
 
     private final RestTemplate restTemplate;
+    private final OutboundUrlPolicy outboundUrlPolicy;
 
     @Override
     public boolean supports(String channelType) {
@@ -48,6 +50,7 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
             throw new IllegalArgumentException("URL is missing in inputTemplate");
         }
         String url = resolveTemplate(urlTemplate, context.getVariables());
+        outboundUrlPolicy.validate(url);
 
         HttpHeaders headers = new HttpHeaders();
         if (input.containsKey("headers")) {
@@ -62,8 +65,7 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
         Map<String, Object> requestDetails = new HashMap<>();
         requestDetails.put("method", method.name());
         requestDetails.put("url", url);
-        requestDetails.put("headers", headers.toSingleValueMap());
-        requestDetails.put("body", body);
+        requestDetails.put("sensitiveFieldsRedacted", true);
 
         try {
             ResponseEntity<Object> response = restTemplate.exchange(url, method, requestEntity, Object.class);
@@ -71,7 +73,6 @@ public class HttpProtocolPlugin implements ProtocolPlugin {
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("statusCode", response.getStatusCode().value());
             responseData.put("body", response.getBody());
-            responseData.put("headers", response.getHeaders());
 
             Map<String, Object> stepOutput = new HashMap<>();
             stepOutput.put("response", responseData);

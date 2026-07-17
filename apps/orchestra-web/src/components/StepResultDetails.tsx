@@ -1,13 +1,13 @@
 import React from 'react';
 import { StepResult } from '../types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, ArrowRightLeft, Database, FileJson, Globe } from 'lucide-react';
+import { AlertCircle, Database, FileJson, Globe } from 'lucide-react';
 
 interface Props {
   result: StepResult;
 }
 
-const JsonViewer: React.FC<{ data: any; title?: string }> = ({ data, title }) => {
+const JsonViewer: React.FC<{ data: unknown; title?: string }> = ({ data, title }) => {
   if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
     return <div className="text-sm text-muted-foreground italic p-4">No data available</div>;
   }
@@ -24,10 +24,8 @@ const JsonViewer: React.FC<{ data: any; title?: string }> = ({ data, title }) =>
 const StepResultDetails: React.FC<Props> = ({ result }) => {
   const hasViolations = result.violations && result.violations.length > 0;
   const structuredOutput = result.structuredOutput || {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const requestData = (structuredOutput as any).request;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const responseData = (structuredOutput as any).response || result.payload;
+  const requestData = structuredOutput.request;
+  const responseData = structuredOutput.response || result.payload;
 
   const defaultTab = hasViolations ? 'violations' : (requestData ? 'request' : 'response');
 
@@ -83,4 +81,3 @@ const StepResultDetails: React.FC<Props> = ({ result }) => {
 };
 
 export default StepResultDetails;
-

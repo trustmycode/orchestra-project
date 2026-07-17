@@ -219,7 +219,7 @@ const ScenarioSuiteListView: React.FC<Props> = ({
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs text-muted-foreground">{new Date(suite.updatedAt).toLocaleString()}</span>
-                        <StatusBadge status={suite.status} className="w-fit" />
+                        <StatusBadge status={suite.status ?? 'DRAFT'} className="w-fit" />
                       </div>
                     </TableCell>
                     <TableCell className="text-right space-x-2">

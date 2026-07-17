@@ -7,21 +7,26 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'orchestra_app') THEN
-    CREATE ROLE orchestra_app WITH LOGIN PASSWORD 'orchestra';
+    CREATE ROLE orchestra_app NOLOGIN;
   END IF;
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'orchestra_admin') THEN
-    CREATE ROLE orchestra_admin WITH LOGIN PASSWORD 'orchestra' BYPASSRLS;
+    CREATE ROLE orchestra_admin NOLOGIN BYPASSRLS;
   END IF;
 END
 $$;
 
 -- 2. Grant Privileges
-GRANT CONNECT ON DATABASE orchestra TO orchestra_app;
+DO $$
+BEGIN
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO orchestra_app', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO orchestra_admin', current_database());
+END
+$$;
+
 GRANT USAGE ON SCHEMA public TO orchestra_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO orchestra_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO orchestra_app;
 
-GRANT CONNECT ON DATABASE orchestra TO orchestra_admin;
 GRANT USAGE ON SCHEMA public TO orchestra_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO orchestra_admin;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO orchestra_admin;
@@ -56,11 +61,5 @@ CREATE POLICY tenant_isolation_data_resolvers ON data_resolvers USING (tenant_id
 CREATE POLICY tenant_isolation_user_tenant_roles ON user_tenant_roles USING (tenant_id = current_setting('app.current_tenant')::uuid);
 CREATE POLICY tenant_isolation_audit_logs ON audit_logs USING (tenant_id = current_setting('app.current_tenant')::uuid);
 
--- 5. Ensure Admin/Migration user can bypass RLS
--- The default 'orchestra' user is usually superuser or owner, so it bypasses RLS by default.
--- Explicitly granting it ensures migrations don't break if it's not superuser.
-ALTER ROLE orchestra BYPASSRLS;
-
--- 6. Grant BYPASSRLS to orchestra_app is NOT done, enforcing security.
+-- 5. Grant BYPASSRLS to orchestra_app is NOT done, enforcing security.
 -- The application MUST set 'app.current_tenant' at the start of transaction.
-

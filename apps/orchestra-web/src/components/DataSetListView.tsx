@@ -61,7 +61,7 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
     }
   };
 
-  const handleAiSuccess = (data: JsonRecord, context: { scenarioId?: string; environmentId: string; origin?: string; isAsyncJob?: boolean }) => {
+  const handleAiSuccess = (data: JsonRecord, context: { scenarioId?: string; environmentId: string; origin?: TestDataSet['origin']; isAsyncJob?: boolean }) => {
     if (!editingDataSet) return;
 
     if (context.isAsyncJob) {
@@ -76,7 +76,7 @@ const DataSetListView: React.FC<Props> = ({ dataSets, onDataSetsChange }) => {
       data,
       scope: context.scenarioId ? 'SCENARIO' : editingDataSet.scope,
       scenarioId: context.scenarioId || editingDataSet.scenarioId,
-      origin: (context.origin as any) || 'AI_GENERATED',
+      origin: context.origin || 'AI_GENERATED',
       // Reset suiteId if we are binding to a specific scenario to avoid ambiguity,
       // or keep it if the logic requires. For now, let's prioritize the scenario context.
       suiteId: context.scenarioId ? undefined : editingDataSet.suiteId,

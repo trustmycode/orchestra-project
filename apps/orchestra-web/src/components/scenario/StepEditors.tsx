@@ -172,7 +172,6 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   scenarioId,
   environmentId,
 }) => {
-  const { t } = useTranslation();
   const handleJsonChange = (
     field: "action" | "expectations",
     value: string
