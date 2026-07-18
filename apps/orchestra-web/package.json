@@ -5,7 +5,7 @@
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-tabs": "^1.1.13",
-    "bpmn-js": "^17.0.2",
+    "bpmn-js": "^18.21.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "i18next": "^23.11.5",
