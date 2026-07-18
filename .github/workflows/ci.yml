@@ -1,50 +1,94 @@
-name: ci
+name: Проверка
 
 on:
   push:
-    branches: [develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
-  build-backend:
+  backend:
+    name: Серверные модули
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: orchestra_test
+          POSTGRES_USER: orchestra_test
+          POSTGRES_PASSWORD: orchestra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orchestra_test -d orchestra_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Получение исходного кода
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Настройка JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
 
-      - name: Build with Maven
-        run: mvn -B verify
+      - name: Тесты и сборка Maven
         working-directory: services
+        env:
+          TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/orchestra_test
+          TEST_DATABASE_USER: orchestra_test
+          TEST_DATABASE_PASSWORD: orchestra_test
+        run: mvn -B verify
 
-  build-frontend:
+  frontend:
+    name: Веб-интерфейс
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Получение исходного кода
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
           cache: npm
+          cache-dependency-path: apps/orchestra-web/package-lock.json
 
-      - name: Install dependencies
-        run: npm install
+      - name: Чистая установка зависимостей
         working-directory: apps/orchestra-web
+        run: npm ci
 
-      - name: Lint
+      - name: Статический анализ
+        working-directory: apps/orchestra-web
         run: npm run lint
-        working-directory: apps/orchestra-web
 
-      - name: Test
-        run: npm run test
+      - name: Тесты
         working-directory: apps/orchestra-web
+        run: npm test
 
-      - name: Build
+      - name: Сборка
+        working-directory: apps/orchestra-web
         run: npm run build
-        working-directory: apps/orchestra-web
+
+  compose:
+    name: Проверка Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получение исходного кода
+        uses: actions/checkout@v4
+
+      - name: Проверка конфигурации
+        working-directory: infra
+        env:
+          POSTGRES_PASSWORD: test-only-postgres
+          POSTGRES_APP_PASSWORD: test-only-app
+          POSTGRES_ADMIN_PASSWORD: test-only-admin
+          RABBITMQ_PASSWORD: test-only-rabbitmq
+          MINIO_ROOT_USER: test-only-minio
+          MINIO_ROOT_PASSWORD: test-only-minio-password
+        run: docker compose -f docker-compose.yml config --quiet

@@ -131,7 +131,7 @@ export interface ScenarioDependency {
 export interface TestScenarioDetail extends TestScenarioSummary {
   steps: ScenarioStep[];
   dependsOn?: ScenarioDependency[];
-  metadata?: Record<string, any>;
+  metadata?: JsonRecord;
   score?: number;
 }
 
@@ -258,7 +258,7 @@ export interface ReportRecommendations {
 export interface JobEvent {
   stage: string;
   description: string;
-  data: any;
+  data: JsonValue;
   timestamp: string;
 }
 
@@ -267,7 +267,7 @@ export interface AiJob {
   status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   progress: number;
   message?: string;
-  result?: any;
+  result?: JsonValue;
   error?: string;
   events?: JobEvent[];
 }

@@ -267,7 +267,7 @@ const TestRunView: React.FC<Props> = ({ testRunId, onBack }) => {
       <h3 className="text-xl font-semibold">Step Results</h3>
       <div className="rounded-md border bg-card">
         <Accordion type="single" collapsible className="w-full">
-          {testRun.stepResults.map((result, index) => (
+          {testRun.stepResults.map((result) => (
             <AccordionItem key={result.stepId} value={result.stepId}>
               <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
                 <div className="flex items-center gap-4 w-full">

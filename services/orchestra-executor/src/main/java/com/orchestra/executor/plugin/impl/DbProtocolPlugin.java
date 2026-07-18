@@ -12,7 +12,9 @@ import com.orchestra.executor.plugin.ProtocolPlugin;
 import com.orchestra.executor.service.ConnectionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -20,15 +22,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DbProtocolPlugin implements ProtocolPlugin {
 
+    private static final Pattern TEMPLATE_VARIABLE = Pattern.compile("\\{\\{([A-Za-z][A-Za-z0-9_.-]*)}}");
+    private static final Pattern READ_ONLY_SQL = Pattern.compile("^select\\b[\\s\\S]*", Pattern.CASE_INSENSITIVE);
+    private static final int MAX_SQL_LENGTH = 10_000;
+
     private final ConnectionManager connectionManager;
     private final DbConnectionProfileRepository dbConnectionProfileRepository;
     private final EnvironmentRepository environmentRepository;
+
+    @Value("${orchestra.executor.db.allow-mutations:false}")
+    private boolean allowMutations;
 
     @Override
     public boolean supports(String channelType) {
@@ -61,25 +72,32 @@ public class DbProtocolPlugin implements ProtocolPlugin {
 
         DataSource dataSource = connectionManager.getDataSource(profile);
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.setQueryTimeout(30);
+        jdbcTemplate.setMaxRows(1000);
+        NamedParameterJdbcTemplate namedJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
 
-        String sql = resolveTemplate(sqlTemplate, context.getVariables());
+        PreparedSql sql = prepareSql(sqlTemplate, context.getVariables());
 
         Map<String, Object> structuredOutput = new HashMap<>();
-        structuredOutput.put("request", Map.of("sql", sql, "dataSource", dataSourceAlias));
+        structuredOutput.put("request", Map.of("dataSource", dataSourceAlias, "sqlRedacted", true));
         Map<String, Object> payload = new HashMap<>();
 
         if ("ASSERTION".equals(step.getKind())) {
-            List<Map<String, Object>> results = executeAssertion(step, jdbcTemplate, sql);
+            requireReadOnly(sql.statement());
+            List<Map<String, Object>> results = executeAssertion(step, namedJdbcTemplate, sql);
             structuredOutput.put("response", results);
             payload.put(step.getAlias() + ".result", results);
         } else {
-            if (sql.trim().toUpperCase().startsWith("SELECT")) {
-                List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
+            if (isReadOnly(sql.statement())) {
+                List<Map<String, Object>> results = namedJdbcTemplate.queryForList(sql.statement(), sql.parameters());
                 payload.put(step.getAlias() + ".result", results);
                 structuredOutput.put("response", results);
                 log.info("DB Query executed. Rows: {}", results.size());
             } else {
-                int rows = jdbcTemplate.update(sql);
+                if (!allowMutations) {
+                    throw new IllegalArgumentException("DB mutations are disabled by configuration");
+                }
+                int rows = namedJdbcTemplate.update(sql.statement(), sql.parameters());
                 payload.put(step.getAlias() + ".rowsAffected", rows);
                 structuredOutput.put("response", Map.of("rowsAffected", rows));
                 log.info("DB Update executed. Rows affected: {}", rows);
@@ -113,20 +131,52 @@ public class DbProtocolPlugin implements ProtocolPlugin {
         return UUID.fromString(idObj.toString());
     }
 
-    private String resolveTemplate(String template, Map<String, Object> variables) {
-        if (template == null || !template.contains("{{")) {
-            return template;
+    private PreparedSql prepareSql(String template, Map<String, Object> variables) {
+        if (template == null || template.isBlank()) {
+            throw new IllegalArgumentException("SQL must not be empty");
         }
-        String result = template;
-        for (Map.Entry<String, Object> entry : variables.entrySet()) {
-            String key = "{{" + entry.getKey() + "}}";
-            String value = String.valueOf(entry.getValue());
-            result = result.replace(key, value);
+        String normalized = template.strip();
+        if (normalized.length() > MAX_SQL_LENGTH) {
+            throw new IllegalArgumentException("SQL is too long");
         }
-        return result;
+        int semicolon = normalized.indexOf(';');
+        if (semicolon >= 0 && semicolon != normalized.length() - 1) {
+            throw new IllegalArgumentException("Multiple SQL statements are not allowed");
+        }
+
+        Matcher matcher = TEMPLATE_VARIABLE.matcher(template);
+        StringBuffer statement = new StringBuffer();
+        Map<String, Object> parameters = new HashMap<>();
+        int index = 0;
+        while (matcher.find()) {
+            String variableName = matcher.group(1);
+            if (!variables.containsKey(variableName)) {
+                throw new IllegalArgumentException("SQL template variable is missing: " + variableName);
+            }
+            Object value = variables.get(variableName);
+            if (value instanceof Map<?, ?> || value instanceof Iterable<?> || (value != null && value.getClass().isArray())) {
+                throw new IllegalArgumentException("SQL template variables must be scalar values");
+            }
+            String parameterName = "value" + index++;
+            parameters.put(parameterName, value);
+            matcher.appendReplacement(statement, ":" + parameterName);
+        }
+        matcher.appendTail(statement);
+        return new PreparedSql(statement.toString(), parameters);
     }
 
-    private List<Map<String, Object>> executeAssertion(ScenarioStep step, JdbcTemplate jdbcTemplate, String sql) {
+    private boolean isReadOnly(String sql) {
+        return READ_ONLY_SQL.matcher(sql.stripLeading()).matches();
+    }
+
+    private void requireReadOnly(String sql) {
+        if (!isReadOnly(sql)) {
+            throw new IllegalArgumentException("Assertions support only SELECT statements");
+        }
+    }
+
+    private List<Map<String, Object>> executeAssertion(
+            ScenarioStep step, NamedParameterJdbcTemplate jdbcTemplate, PreparedSql sql) {
         Map<String, Object> meta = getActionMeta(step);
         long timeout = getMetaLong(meta, "timeoutMs", 5000L);
         long interval = getMetaLong(meta, "pollIntervalMs", 1000L);
@@ -136,7 +186,7 @@ public class DbProtocolPlugin implements ProtocolPlugin {
 
         while (System.currentTimeMillis() < endTime) {
             try {
-                List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
+                List<Map<String, Object>> results = jdbcTemplate.queryForList(sql.statement(), sql.parameters());
                 if (checkExpectations(results, step.getExpectations())) {
                     log.info("DB Assertion passed for step {}", step.getAlias());
                     return results;
@@ -217,5 +267,8 @@ public class DbProtocolPlugin implements ProtocolPlugin {
             }
         }
         return defaultValue;
+    }
+
+    private record PreparedSql(String statement, Map<String, Object> parameters) {
     }
 }

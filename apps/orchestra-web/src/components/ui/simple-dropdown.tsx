@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, ButtonProps } from './button';
-import { cn } from '../../lib/utils';
 
 interface DropdownItem {
   label: string;
@@ -54,4 +53,3 @@ export const SimpleDropdown: React.FC<SimpleDropdownProps> = ({ label, items, cl
     </div>
   );
 };
-

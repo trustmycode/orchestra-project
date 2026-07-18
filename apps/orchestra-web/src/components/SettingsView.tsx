@@ -44,7 +44,7 @@ const SettingsView: React.FC = () => {
     dataSource: "",
     mapping: "",
   });
-  const [editingResolverId, setEditingResolverId] = useState<String | null>(null);
+  const [editingResolverId, setEditingResolverId] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [dbProfiles, setDbProfiles] = useState<DbConnectionProfile[]>([]);
   const [kafkaProfiles, setKafkaProfiles] = useState<KafkaClusterProfile[]>([]);
@@ -113,7 +113,7 @@ const SettingsView: React.FC = () => {
     try {
       const data = await getPrompt(key);
       setPromptTemplate(data.template);
-    } catch (err) {
+    } catch {
       setPromptError("Failed to load prompt");
       setPromptTemplate("");
     } finally {
@@ -350,7 +350,7 @@ const SettingsView: React.FC = () => {
     setPromptError(null);
     try {
       await updatePrompt(selectedPromptKey, promptTemplate);
-    } catch (err) {
+    } catch {
       setPromptError("Failed to save prompt");
     } finally {
       setPromptLoading(false);

@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { cn } from '../../lib/utils';
 import { getEnvironments, getScenarios, getScenarioSuites, startAiJob } from '../../api';
-import { Environment, TestScenarioSummary, ScenarioSuiteSummary, JsonRecord } from '../../types';
+import { Environment, TestScenarioSummary, ScenarioSuiteSummary, JsonRecord, TestDataSet } from '../../types';
 import { useJobPoller } from '../JobPollerContext';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (data: JsonRecord, context: { scenarioId?: string; suiteId?: string; environmentId: string; origin?: string; isAsyncJob?: boolean }) => void;
+  onSuccess: (data: JsonRecord, context: { scenarioId?: string; suiteId?: string; environmentId: string; origin?: TestDataSet['origin']; isAsyncJob?: boolean }) => void;
 }
 
 const AiDataGenerationModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
@@ -197,7 +196,7 @@ const AiDataGenerationModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) 
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={generationMode}
-                  onChange={(e) => setGenerationMode(e.target.value as any)}
+                  onChange={(e) => setGenerationMode(e.target.value as typeof generationMode)}
                 >
                   <option value="HAPPY_PATH">{t('generateModal.modeHappy')}</option>
                   <option value="NEGATIVE">{t('generateModal.modeNegative')}</option>
