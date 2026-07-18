@@ -15,7 +15,7 @@
     <description>AI Service for Orchestra</description>
 
     <properties>
-        <spring-ai.version>1.1.0</spring-ai.version>
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
 
     <dependencies>
