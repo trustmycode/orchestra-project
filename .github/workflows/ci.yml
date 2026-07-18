@@ -28,7 +28,7 @@ jobs:
           --health-retries 5
     steps:
       - name: Получение исходного кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Настройка JDK 21
         uses: actions/setup-java@v4
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Получение исходного кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Настройка Node.js
         uses: actions/setup-node@v4
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Получение исходного кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Проверка конфигурации
         working-directory: infra
